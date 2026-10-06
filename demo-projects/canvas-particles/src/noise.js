@@ -18,7 +18,6 @@ function buildPermutation(seed) {
 
 export function createFieldSampler(seed) {
   const perm = buildPermutation(seed);
-  let fieldEvals = 0;
 
   function gradient(i, j) {
     const idx = perm[(perm[i & 0xff] + j) & 0xff];
@@ -54,7 +53,6 @@ export function createFieldSampler(seed) {
     let amplitude = 1;
     let frequency = 1;
     for (let octave = 0; octave < 8; octave++) {
-      fieldEvals++;
       value += noise2D(x * frequency, y * frequency) * amplitude;
       amplitude *= 0.5;
       frequency *= 2;
@@ -64,11 +62,5 @@ export function createFieldSampler(seed) {
 
   return {
     sampleField,
-    get fieldEvals() {
-      return fieldEvals;
-    },
-    resetFieldEvals() {
-      fieldEvals = 0;
-    },
   };
 }

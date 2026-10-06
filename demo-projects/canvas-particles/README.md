@@ -45,7 +45,7 @@ The returned simulation has:
 
 The benchmark emits one `METRIC name=value` line per metric:
 
-- `field_evals` — number of field samples evaluated, including per-octave work.
+- `field_evals` — number of field samples evaluated.
 - `draw_calls` — number of draw operations issued.
 - `culled` — particles skipped because they are outside the canvas.
 - `sim_ms` — wall time spent in simulation steps.
