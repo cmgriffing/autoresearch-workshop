@@ -1,5 +1,4 @@
-// Unused polyfill imported by the entry point. It is intentionally kept on the
-// critical path so that builds configured without it show a real size win.
+// Small runtime shim kept for legacy browser support.
 globalThis.__bundleDietPolyfill = (function buildPolyfill() {
   const table = [];
   for (let i = 0; i < 800; i++) {

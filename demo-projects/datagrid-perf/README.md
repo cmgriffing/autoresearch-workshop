@@ -25,7 +25,7 @@ The app exports the following stable interface:
     harness.
   - The component ref exposes `{ tick() }` so the harness can advance one
     background update under controlled time.
-- `ROW_HEIGHT` — fixed row height in pixels. Virtualization must not depend on
+- `ROW_HEIGHT` — fixed row height in pixels. The grid must not depend on DOM
   layout measurement.
 - `GridContext` — the grid's React context object.
 

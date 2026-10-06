@@ -3,7 +3,7 @@
  *
  * Interface contract (stable):
  * - Grid: forwardRef component accepting { rows: Row[], viewport: { width, height } }
- * - ROW_HEIGHT: fixed row height in pixels (virtualization must not measure layout)
+ * - ROW_HEIGHT: fixed row height in pixels (the grid must not measure layout)
  * - Grid ref exposes { tick() } to advance background updates under controlled time.
  */
 import React, {
@@ -45,8 +45,6 @@ export const Grid = forwardRef(function Grid({ rows: initialRows, viewport }, re
     },
   }));
 
-  // Unoptimized baseline: re-create the context value, handlers and derived data
-  // on every render so every context consumer re-renders.
   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
 
   const filteredSortedRows = rows
