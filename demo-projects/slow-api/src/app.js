@@ -5,13 +5,6 @@
  *
  * Request shape:  { method, path, query?, body? }
  * Response shape: { status, payload }
- *
- * This baseline implementation is deliberately unoptimized:
- *   - schema has only primary-key indexes
- *   - related records are fetched with per-row follow-up queries
- *   - filtering, ordering and pagination are done in JavaScript
- *   - pagination uses unbounded OFFSET
- *   - prepared statements are recreated per request
  */
 
 function parseQuery(q = {}) {
