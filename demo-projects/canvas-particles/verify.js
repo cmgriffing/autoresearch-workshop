@@ -13,6 +13,5 @@ function run(label, args) {
 }
 
 run('tests', ['--test', 'test/']);
+console.log('[verify] tests passed');
 run('benchmark', ['bench/bench.js']);
-
-console.log('\n[verify] all checks passed');
