@@ -3,7 +3,7 @@
  * @param {Uint8Array|number[]} arr
  * @returns {number} Unsigned 32-bit integer
  */
-function checksum(arr) {
+export function checksum(arr) {
   if (arr.length === 0) return 0;
 
   // Initialize sums as standard integers
