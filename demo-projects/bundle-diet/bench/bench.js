@@ -63,6 +63,7 @@ async function main() {
   await build({
     configFile: path.join(srcDir, 'vite.config.js'),
     mode: 'production',
+    logLevel: 'silent',
   });
   const buildMs = performance.now() - t0;
 
@@ -94,7 +95,7 @@ async function main() {
     `Total output: ${allFiles.length} files, ${(totalBytes / 1024).toFixed(2)} kB gzipped`
   );
   console.log('Heaviest source modules:');
-  for (const m of modules.slice(0, 5)) {
+  for (const m of modules.slice(0, 4)) {
     console.log(`  ${m.name} ${(m.size / 1024).toFixed(1)} kB`);
   }
 
