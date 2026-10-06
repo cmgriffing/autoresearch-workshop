@@ -5,6 +5,10 @@ node_modules
 .pnp
 .pnp.js
 
+# Local planning and tooling (not shared)
+.pi
+openspec
+
 # Local env files
 .env
 .env.local
