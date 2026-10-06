@@ -5,7 +5,7 @@
   "type": "module",
   "description": "SQLite-backed request handler demo",
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test test/test.js",
     "bench": "node bench/bench.js",
     "verify": "node verify.js",
     "dev": "node server.js"
