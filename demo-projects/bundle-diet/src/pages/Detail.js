@@ -6,6 +6,7 @@ export default function Detail() {
     'div',
     null,
     React.createElement('h2', null, 'Detail'),
+    React.createElement('p', { className: 'route-marker' }, 'detail-marker'),
     React.createElement('p', null, 'Detailed view for the selected record.'),
     React.createElement(Card, { title: 'Record summary' })
   );

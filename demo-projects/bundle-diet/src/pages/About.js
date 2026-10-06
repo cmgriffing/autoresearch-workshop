@@ -6,6 +6,7 @@ export default function About() {
     'div',
     null,
     React.createElement('h2', null, 'About'),
+    React.createElement('p', { className: 'route-marker' }, 'about-marker'),
     React.createElement('p', null, 'Bundle Diet demo application.'),
     React.createElement(Card, { title: 'Credits' })
   );

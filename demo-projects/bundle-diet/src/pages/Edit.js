@@ -6,6 +6,7 @@ export default function Edit() {
     'div',
     null,
     React.createElement('h2', null, 'Edit'),
+    React.createElement('p', { className: 'route-marker' }, 'edit-marker'),
     React.createElement(EditorPanel, null)
   );
 }

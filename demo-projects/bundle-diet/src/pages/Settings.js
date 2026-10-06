@@ -6,6 +6,7 @@ export default function Settings() {
     'div',
     null,
     React.createElement('h2', null, 'Settings'),
+    React.createElement('p', { className: 'route-marker' }, 'settings-marker'),
     React.createElement('p', null, 'Application preferences and defaults.'),
     React.createElement(Card, { title: 'General' })
   );

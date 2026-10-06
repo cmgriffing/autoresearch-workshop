@@ -7,6 +7,7 @@ export default function Catalog() {
     'div',
     null,
     React.createElement('h2', null, 'Catalog'),
+    React.createElement('p', { className: 'route-marker' }, 'catalog-marker'),
     React.createElement('p', null, `Showing ${catalog.length} items`),
     React.createElement(Card, { title: catalog[0]?.name || 'Item' })
   );

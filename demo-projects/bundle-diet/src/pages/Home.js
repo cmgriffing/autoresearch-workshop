@@ -7,6 +7,7 @@ export default function Home() {
     'div',
     null,
     React.createElement('h2', null, 'Home'),
+    React.createElement('p', { className: 'route-marker' }, 'home-marker'),
     React.createElement('p', null, `Loaded ${catalog.length} catalog items`),
     React.createElement(Card, { title: 'Featured item' })
   );
