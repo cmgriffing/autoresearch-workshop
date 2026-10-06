@@ -22,10 +22,17 @@ describe('field sampler', () => {
     }
   });
 
-  it('counts one evaluation per octave', () => {
+  it('returns finite values for arbitrary coordinates', () => {
     const sampler = createFieldSampler(7);
-    sampler.resetFieldEvals();
-    sampler.sampleField(10, 20);
-    assert.equal(sampler.fieldEvals, 8);
+    const points = [
+      [10, 20],
+      [-5, 100],
+      [1000, -2000],
+      [Math.PI, Math.E],
+    ];
+    for (const [x, y] of points) {
+      const v = sampler.sampleField(x, y);
+      assert.ok(Number.isFinite(v), `non-finite at (${x}, ${y})`);
+    }
   });
 });

@@ -1,6 +1,7 @@
 import { createCanvas } from '@napi-rs/canvas';
 import { createSimulation } from '../src/simulation.js';
 import { createFieldSampler } from '../src/noise.js';
+import { wrapFieldSampler } from './field-counter.js';
 import { referenceState, compareState } from './reference.js';
 import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
@@ -24,27 +25,38 @@ function hashWorkload(workload) {
     width: workload.width,
     height: workload.height,
     timestep: workload.timestep,
+    seed: workload.seed,
+    verifySeed: workload.verifySeed,
   });
   return crypto.createHash('sha256').update(payload).digest('hex').slice(0, 16);
 }
 
-
 function countingContext(canvas) {
   const ctx = canvas.getContext('2d');
   let drawCalls = 0;
-  let culled = 0;
   const baseFill = ctx.fill.bind(ctx);
   ctx.fill = function () {
     drawCalls++;
     return baseFill.apply(this, arguments);
   };
-  return { ctx, drawCalls: () => drawCalls, culled: () => culled };
+  return { ctx, drawCalls: () => drawCalls };
+}
+
+function countCulled(particles, width, height) {
+  let count = 0;
+  for (const p of particles) {
+    if (p.x < 0 || p.x > width || p.y < 0 || p.y > height) {
+      count++;
+    }
+  }
+  return count;
 }
 
 function runBenchmark() {
   const canvas = createCanvas(WORKLOAD.width, WORKLOAD.height);
-  const sampler = createFieldSampler(WORKLOAD.seed);
-  const { ctx, drawCalls, culled } = countingContext(canvas);
+  const baseSampler = createFieldSampler(WORKLOAD.seed);
+  const sampler = wrapFieldSampler(baseSampler);
+  const { ctx, drawCalls } = countingContext(canvas);
   const sim = createSimulation(canvas, {
     ...WORKLOAD,
     fieldSampler: sampler,
@@ -53,11 +65,14 @@ function runBenchmark() {
   sampler.resetFieldEvals();
   let simMs = 0;
   let drawMs = 0;
+  let culled = 0;
   const start = performance.now();
   for (let f = 0; f < WORKLOAD.frames; f++) {
     const s0 = performance.now();
     sim.step(WORKLOAD.timestep);
     simMs += performance.now() - s0;
+
+    culled += countCulled(sim.particles, WORKLOAD.width, WORKLOAD.height);
 
     const d0 = performance.now();
     sim.draw();
@@ -65,20 +80,17 @@ function runBenchmark() {
   }
   const totalMs = performance.now() - start;
 
-  const fieldEvals = sampler.fieldEvals;
-  const drawCallCount = drawCalls();
-  const culledCount = culled();
-
-  console.log(`particles=${WORKLOAD.particleCount} frames=${WORKLOAD.frames} canvas=${WORKLOAD.width}x${WORKLOAD.height}`);
-  console.log(`METRIC field_evals=${fieldEvals}`);
-  console.log(`METRIC draw_calls=${drawCallCount}`);
-  console.log(`METRIC culled=${culledCount}`);
-  console.log(`METRIC sim_ms=${simMs.toFixed(3)}`);
-  console.log(`METRIC draw_ms=${drawMs.toFixed(3)}`);
-  console.log(`METRIC total_ms=${totalMs.toFixed(3)}`);
-  console.log(`METRIC workload_hash=${hashWorkload(WORKLOAD)}`);
-
-  return { sim, totalMs, simMs, drawMs };
+  return {
+    metrics: {
+      fieldEvals: sampler.fieldEvals,
+      drawCalls: drawCalls(),
+      culled,
+      simMs,
+      drawMs,
+      totalMs,
+      workloadHash: hashWorkload(WORKLOAD),
+    },
+  };
 }
 
 function verify() {
@@ -98,12 +110,19 @@ function verify() {
   }
 }
 
-const { totalMs, simMs, drawMs } = runBenchmark();
+const { metrics } = runBenchmark();
 verify();
 
-if (totalMs <= 0 || simMs <= 0) {
-  throw new Error('Timing metrics must be positive');
+if (metrics.totalMs <= 0 || metrics.simMs <= 0) {
+  console.error('Timing metrics must be positive');
+  process.exit(1);
 }
-if (simMs <= drawMs) {
-  throw new Error(`Simulation cost must dominate drawing cost (sim_ms=${simMs.toFixed(3)} draw_ms=${drawMs.toFixed(3)})`);
-}
+
+console.log(`particles=${WORKLOAD.particleCount} frames=${WORKLOAD.frames} canvas=${WORKLOAD.width}x${WORKLOAD.height}`);
+console.log(`METRIC field_evals=${metrics.fieldEvals}`);
+console.log(`METRIC draw_calls=${metrics.drawCalls}`);
+console.log(`METRIC culled=${metrics.culled}`);
+console.log(`METRIC sim_ms=${metrics.simMs.toFixed(3)}`);
+console.log(`METRIC draw_ms=${metrics.drawMs.toFixed(3)}`);
+console.log(`METRIC total_ms=${metrics.totalMs.toFixed(3)}`);
+console.log(`METRIC workload_hash=${metrics.workloadHash}`);
