@@ -23,9 +23,11 @@ pnpm test    # correctness suite (node:test, zero dependencies)
 pnpm bench   # benchmark: emits METRIC lines on stdout
 ```
 
-The benchmark times one call per distinct 16 MiB buffer (median of 5 runs) so
-cross-call caching cannot game the number. Override the workload with
-`BENCH_MB` and `BENCH_RUNS`.
+The benchmark stream-fills five distinct 16 MiB buffers and times one call per
+buffer (median of 5). Every timed result is validated against a checksum
+accumulated independently during generation, so caching, repetitive inputs,
+and wrong-but-fast implementations cannot log a metric. Override the workload
+with `BENCH_MB` and `BENCH_RUNS`.
 
 ## Running autoresearch on it
 
@@ -36,6 +38,6 @@ The `.auto/` session is pre-wired. Open Pi in this directory and run:
 ```
 
 `.auto/prompt.md` states the objective, the frozen contract, and what is off
-limits: `bench.js` and `test/` must not change, and `src/index.js` is the only
-implementation file in scope. See the root README for Pi and pi-autoresearch
-installation.
+limits: `bench.js` and `test/` must not change, and implementation work is
+confined to `src/index.js` plus any new files under `src/` that it imports. See
+the root README for Pi and pi-autoresearch installation.

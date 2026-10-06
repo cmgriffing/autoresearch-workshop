@@ -5,12 +5,16 @@
  * lines. Human-readable diagnostics go to stderr.
  *
  * Guards against benchmark gaming:
- *   G1  smoke goldens — a wrong-but-fast implementation exits 1 (crash)
- *       before any timing happens
+ *   G1  smoke goldens — a wrong implementation exits 1 (crash) before any
+ *       timing happens
  *   G2  one warmup call — JIT is warm before timing
  *   G3  one timed call per distinct buffer — cross-call caching cannot help
  *   G4  every result must be a uint32 — catches stateful/aliased returns
  *   G5  generation is untimed and pre-touches pages
+ *   G6  every timed result is compared against an independently accumulated
+ *       golden — a wrong-but-fast implementation that passes the smoke
+ *       vectors (e.g. correct up to the suite's 1 MiB anchor, wrong above it)
+ *       still crashes before any METRIC line is printed
  *
  * V8 footgun, do not "simplify": every call before the timed loop must pass a
  * plain Uint8Array. Calling checksum with number[] or Buffer first makes the
@@ -45,7 +49,7 @@ const bytes = mb * MIB;
 // Uint8Array-only on purpose — see the V8 footgun note above.
 const SMOKE_CHECKS = [
   { input: new Uint8Array([1, 2, 3, 4]), expected: 0x01020304 },
-  { input: new Uint8Array([1, 0, 0, 0, 255]), expected: 0x00000000 }, // lane 0: 1 + 255 = 256 ≡ 0 (mod 256)
+  { input: new Uint8Array([1, 0, 0, 0, 255]), expected: 0x00000000 }, // lane 0: 1 + 255 = 256, and (256 << 24) truncates to 0
   { input: new TextEncoder().encode("123456789"), expected: 0x9f686a6c },
 ];
 for (const { input, expected } of SMOKE_CHECKS) {
@@ -58,35 +62,64 @@ for (const { input, expected } of SMOKE_CHECKS) {
   }
 }
 
-/** 64 KiB of deterministic xorshift bytes, tiled to fill a buffer. */
-function fillBuffer(size, seed) {
-  const tile = new Uint8Array(64 * 1024);
+/**
+ * G3 + G5 + G6: deterministic, aperiodic input generation.
+ *
+ * Tiling a repeated 64 KiB buffer via .set() is ~8x cheaper, but it makes
+ * every timed buffer periodic, so a correct tile-detecting implementation
+ * could shortcut the workload without reflecting real checksum speed. The
+ * xorshift stream therefore runs across the whole buffer, and the expected
+ * result is accumulated from the same bytes in the same untimed pass, so
+ * G6's golden costs no extra run. Byte writes keep it endian-independent.
+ */
+function generateInput(size, seed) {
+  const buffer = new Uint8Array(size);
+  const lanes = [0, 0, 0, 0];
   let s = seed >>> 0 || 1;
-  for (let i = 0; i < tile.length; i++) {
+  const quads = size - (size % 4);
+  for (let i = 0; i < quads; i += 4) {
     s = (s ^ (s << 13)) >>> 0;
     s = (s ^ (s >>> 17)) >>> 0;
     s = (s ^ (s << 5)) >>> 0;
-    tile[i] = s & 0xff;
+    const b0 = s & 0xff;
+    const b1 = (s >>> 8) & 0xff;
+    const b2 = (s >>> 16) & 0xff;
+    const b3 = (s >>> 24) & 0xff;
+    buffer[i] = b0;
+    buffer[i + 1] = b1;
+    buffer[i + 2] = b2;
+    buffer[i + 3] = b3;
+    lanes[0] = (lanes[0] + b0) >>> 0;
+    lanes[1] = (lanes[1] + b1) >>> 0;
+    lanes[2] = (lanes[2] + b2) >>> 0;
+    lanes[3] = (lanes[3] + b3) >>> 0;
   }
-  const buffer = new Uint8Array(size);
-  for (let offset = 0; offset < size; offset += tile.length) {
-    buffer.set(tile.subarray(0, Math.min(tile.length, size - offset)), offset);
+  for (let i = quads; i < size; i++) {
+    s = (s ^ (s << 13)) >>> 0;
+    s = (s ^ (s >>> 17)) >>> 0;
+    s = (s ^ (s << 5)) >>> 0;
+    const b = s & 0xff;
+    buffer[i] = b;
+    lanes[i & 3] = (lanes[i & 3] + b) >>> 0;
   }
-  return buffer;
+  const expected =
+    (lanes[3] + (lanes[2] << 8) + (lanes[1] << 16) + (lanes[0] << 24)) >>> 0;
+  return { buffer, expected };
 }
 
 // G5: build all inputs up front, outside the timed region. Distinct seeds make
-// every buffer's contents unique, which is what closes the caching loophole.
-const buffers = Array.from({ length: runs }, (_, i) =>
-  fillBuffer(bytes, 0x9e3779b9 + i),
+// every buffer's contents unique, which closes the cross-call caching loophole.
+const inputs = Array.from({ length: runs }, (_, i) =>
+  generateInput(bytes, 0x9e3779b9 + i),
 );
 
 // G2: one warmup call so the timed runs measure steady-state code.
-checksum(buffers[0]);
+checksum(inputs[0].buffer);
 
-// G3: one timed call per distinct buffer.
+// G3 + G4 + G6: one timed call per distinct buffer; every result must be a
+// uint32 and must match the golden accumulated during generation.
 const times = [];
-for (const buffer of buffers) {
+for (const { buffer, expected } of inputs) {
   const start = process.hrtime.bigint();
   const result = checksum(buffer);
   const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6;
@@ -94,6 +127,13 @@ for (const buffer of buffers) {
   // G4: a checksum must be a uint32 for every input.
   if (!Number.isInteger(result) || result < 0 || result > 0xffffffff) {
     console.error(`bench: checksum returned a non-uint32 value: ${result}`);
+    process.exit(1);
+  }
+  // G6: crash before any METRIC line if the fast path is also wrong.
+  if (result !== expected) {
+    console.error(
+      `bench: result validation failed — checksum returned ${result}, expected ${expected}`,
+    );
     process.exit(1);
   }
   times.push(elapsedMs);

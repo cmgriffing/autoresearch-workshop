@@ -1,6 +1,6 @@
 # Proposal: Checksum demo — benchmarks, tests, and pre-wired autoresearch session
 
-**Status:** implemented, pending review
+**Status:** implemented, revised after adversarial review (G6 + aperiodic workload); pending re-review
 **Branch:** `kepler/checksum-demo-benchmarks-tests`
 **Scope:** `demo-projects/checksum/**` only
 **Purpose of this document:** capture the plans and intent behind the change so a
@@ -37,19 +37,21 @@ implementation (that is the participant's job); wiring turbo/root scripts
 | D1 | Freeze the contract as: bytes in, lane sums mod 2³², big-endian lane combine | It is the existing behavior, verified against an independent BigInt reference. Optimizers may change mechanism, not results. |
 | D2 | Pin the contract at scale with a 16 MiB `0xff` vector (`0xffc00000`) | Lane sums exceed all truncation widths (2⁸/2¹⁶/2²⁴); the golden is hand-derivable, so it cannot silently bake in a bug. |
 | D3 | Zero dependencies: `node:test` + hand-rolled bench | Node ≥24 is already required; workshop stays offline-friendly; no pnpm/lockfile churn. Vitest + tinybench was the alternative, rejected. |
-| D4 | Workload: 16 MiB `Uint8Array`, median of 5 runs, one call per distinct buffer | Measured best stability-vs-battery point (see §3); distinct buffers close the caching loophole. |
-| D5 | Guards G1–G5 in `bench.js` (smoke goldens, warmup, distinct buffers, uint32 check, untimed generation) | A wrong-but-fast change must crash the experiment, never log a keepable metric. |
+| D4 | Workload: 16 MiB `Uint8Array`, median of 5 runs, one call per distinct aperiodic buffer | Measured best stability-vs-battery point (see §3); distinct buffers close cross-call caching, stream filling closes intra-buffer periodicity (D12). |
+| D5 | Guards G1–G6 in `bench.js` (smoke goldens, warmup, distinct aperiodic buffers, uint32 check, untimed generation, timed-result golden) | A wrong-but-fast change must crash the experiment, never log a keepable metric. G6 was added after adversarial review: smoke-only checking let a wrong-above-1-MiB implementation pass all 24 tests and log a keepable metric. |
 | D6 | Pre-wire `.auto/prompt.md`, `measure.sh`, `checks.sh` | Explicit user decision: the checksum demo should be immediately runnable in the workshop. |
 | D7 | Demo stays standalone; no `turbo.json` tasks | Explicit user decision. |
 | D8 | Primary metric `checksum_ms` (lower better); secondaries `mbps`, `spread_pct`, `bytes`, `runs` | `_ms` suffix gives the harness a unit label; secondaries are context, never gate `keep`. |
 | D9 | `spread_pct` = relative MAD, not min-max range | Min-max swung 2.5–26.6% on identical runs due to single scheduling outliers; MAD measures median precision (0.9–3.7%). Changed mid-implementation for this reason — reviewer should confirm the choice. |
 | D10 | Smoke checks run *before* timing but use `Uint8Array` only | See §4 — this is the least obvious design constraint in the change. |
+| D11 | Timed results validated against a golden accumulated during untimed generation | Closes the reviewed guard gap: G1's smoke vectors are tiny and the suite's non-degenerate anchors stop at 1 MiB, so a bug that only manifests above that could otherwise be kept. Accumulation rides along with generation, so validation costs no extra run. |
+| D12 | Stream-fill inputs (xorshift across the whole buffer) instead of tiling one 64 KiB tile | Tiling made every timed buffer periodic; a correct tile-detector won ~186x without reflecting real checksum speed. Stream fill costs ~52 ms for the default five buffers — acceptable (see §3). |
 
 Rejected alternatives worth noting:
 
 - **Two alternating buffers** (A/B) for anti-caching: an identity-keyed 2-entry
-  cache still wins. N distinct buffers is the stronger design; generation is
-  nearly free (tile `.set()` ≈ 0.07 ms/MiB).
+  cache still wins. N distinct aperiodic buffers is the stronger design;
+  generation costs ≈0.65 ms/MiB with the stream fill and is untimed.
 - **BigInt reference for all sizes**: reads like the spec but costs ~1.5 ms per
   64 KiB; kept for small/boundary inputs, with a fast integer reference for the
   1 MiB cross-check.
@@ -68,10 +70,13 @@ Measured on an M-series Mac, Node 24.16, median of 7, single buffer:
 | 32 MiB | 37.25 ms | 6.8% | |
 | 64 MiB | 77.81 ms | 13.8% | |
 
-16 MiB × 5 + warmup + generation ≈ **115 ms per experiment** — roughly 6x
-kinder to battery than 64 MiB × 7 at equal or better stability. A 2% win at
-16 MiB is ~0.37 ms versus a ~0.02 ms measured noise floor, so the harness
-confidence score can still discriminate. `BENCH_MB` / `BENCH_RUNS` override up.
+16 MiB × 5 + warmup + aperiodic generation ≈ **165 ms of work per experiment**
+(≈200–220 ms wall including node startup) — roughly 3.5x kinder overall than
+64 MiB × 7 (5x on timed bytes alone) at equal or better stability. Stream
+generation adds ~52 ms versus the old tile copy; D12 explains why that trade
+is worth it. A 2% win at 16 MiB is ~0.37 ms versus a ~0.02 ms measured noise
+floor, so the harness confidence score can still discriminate. `BENCH_MB` /
+`BENCH_RUNS` override up.
 
 ---
 
@@ -128,9 +133,13 @@ change. No behavior change.
 ### `bench.js` — guards, then METRIC output
 - G1 smoke goldens (Uint8Array only, fails fast — no METRIC lines on failure)
 - G2 one warmup call
-- G3 one timed call per distinct buffer (distinct seeds)
+- G3 one timed call per distinct aperiodic buffer (distinct seeds)
 - G4 every timed result asserted uint32
 - G5 inputs generated up front, outside the timed region
+- G6 every timed result compared against a golden accumulated during
+  generation (catches wrong-above-1-MiB implementations that pass the suite)
+- generation: xorshift stream across the whole buffer — no repeated 64 KiB
+  tiles (D12)
 - stdout: only `METRIC` lines; diagnostics to stderr
 - Env: `BENCH_MB` (MiB, default 16), `BENCH_RUNS` (default 5)
 
@@ -138,8 +147,9 @@ change. No behavior change.
 - `prompt.md` — objective, metrics, contract, scope (`src/**`), off-limits
   (`bench.js`, `test/**`, `package.json`, `.auto/**`), env knobs, baseline noted.
 - `measure.sh` — `cd` to project root, `exec node bench.js`.
-- `checks.sh` — `node --test --test-reporter=dot | tail -50`; non-zero exit
-  blocks `keep`. Both executable.
+- `checks.sh` — `node --test --test-reporter=dot 2>&1 | tail -50`; non-zero
+  exit blocks `keep` (`set -o pipefail` keeps node's status through the pipe).
+  Both executable.
 
 ### `package.json`
 `main` → `src/index.js`; `test` → `node --test`; `bench` → `node bench.js`;
@@ -149,24 +159,29 @@ the (empty, dependency-free) `demo-projects/checksum` importer entry to
 missing from the stale lockfile.
 
 ### `README.md`
-Contract, commands, benchmark design note (distinct buffers), and the
-`/autoresearch` quickstart. Links to the root README for install/setup instead
-of repeating it.
+Contract, commands, benchmark design note (aperiodic buffers + result
+validation), and the `/autoresearch` quickstart. Links to the root README for
+install/setup instead of repeating it.
 
 ---
 
-## 6. Verification evidence (as run, this session)
+## 6. Verification evidence (as run, post-review revision)
 
 | Check | Result |
 |---|---|
-| `pnpm test` | 24/24 pass, ~88 ms |
-| `pnpm bench` (×3) | `checksum_ms` 18.36 / 18.59 / 18.42; `spread_pct` 0.86 / 0.97 / 2.18 |
-| `./.auto/measure.sh` | exit 0, clean METRIC lines |
-| `./.auto/checks.sh` | exit 0, minimal dot output |
+| `pnpm test` | 24/24 pass, ~90–95 ms |
+| `pnpm bench` (×3) | `checksum_ms` 18.86 / 18.97 / 20.30; `spread_pct` 1.60 / 3.65 / 4.09 (a few per cent of run-to-run drift on this machine) |
+| `./.auto/measure.sh` | exit 0, clean METRIC lines, ≈220 ms wall incl. node startup |
+| `./.auto/checks.sh` | exit 0, ~120 ms |
+| `BENCH_MB=4 BENCH_RUNS=3 pnpm bench` | `bytes=4194304`, `runs=3`, exit 0 |
+| `BENCH_MB=nope pnpm bench` | exit 2, empty stdout, stderr message |
 | Broken impl (tmp copy, `sum + 1`) | `bench.js` exit 1, **empty stdout**, stderr smoke failure; `measure.sh` exit 1; `checks.sh` exit 1; 9/24 tests pass, 15 fail |
+| Wrong above 1 MiB, correct on smoke + 24/24 tests (tmp copy) | `bench.js` exit 1, **empty stdout**, stderr `result validation failed` — G6 catches what `checks.sh` cannot |
+| 64 KiB periodic shortcut, correct on 24/24 tests (tmp copy) | no exploit: falls through to the naive path (~19.7 ms), so tiling can no longer inflate the metric (D12) |
 
 Baseline recorded in `.auto/prompt.md`: ~18.4 ms / ~870 MB/s for the naive
-`i % 4` + `switch` loop.
+`i % 4` + `switch` loop. The initial session's evidence (bench 18.36–18.59 ms)
+is preserved in git history.
 
 ---
 
@@ -177,17 +192,18 @@ Work from `demo-projects/checksum`.
 **Standard verification**
 
 ```bash
-git diff -- src/index.js   # expect only the added `export`
-pnpm test                  # 24/24 pass
+git show HEAD -- src/index.js    # expect only the added `export`
+pnpm test                        # 24/24 pass
 for i in 1 2 3; do pnpm bench; done
 # expect: stable medians, spread_pct < ~5%, exactly 5 METRIC lines
-BENCH_MB=4 BENCH_RUNS=3 pnpm bench      # overrides work
-BENCH_MB=nope pnpm bench; echo "exit=$?" # expect exit 2, stderr message
+BENCH_MB=4 BENCH_RUNS=3 pnpm bench        # overrides work
+BENCH_MB=nope pnpm bench; echo "exit=$?"  # expect exit 2, stderr message
 ```
 
 **Adversarial verification (guards actually fire)**
 
 ```bash
+# 1. Smoke-level breakage: caught by G1 before any METRIC line.
 rm -rf /tmp/checksum-review && cp -R . /tmp/checksum-review
 sed -i '' 's/return sum;/return (sum + 1) >>> 0;/' /tmp/checksum-review/src/index.js
 cd /tmp/checksum-review
@@ -195,10 +211,41 @@ node bench.js > out.txt; echo "bench exit=$?"   # expect 1, out.txt empty
 ./.auto/checks.sh; echo "checks exit=$?"        # expect 1
 ```
 
+```bash
+# 2. Wrong only above the suite's 1 MiB anchor: passes smoke and 24/24 tests,
+#    so only G6 can stop it. Regression test for the reviewed guard gap.
+rm -rf /tmp/checksum-review2 && cp -R . /tmp/checksum-review2
+cat > /tmp/checksum-review2/src/index.js <<'EOF'
+export function checksum(arr) {
+  if (arr.length > 1024 * 1024) {
+    if (!(arr[0] === 0xff && arr[arr.length - 1] === 0xff)) return 0;
+  }
+  let s0 = 0, s1 = 0, s2 = 0, s3 = 0;
+  for (let i = 0; i < arr.length; i++) {
+    switch (i % 4) {
+      case 0: s0 = (s0 + arr[i]) | 0; break;
+      case 1: s1 = (s1 + arr[i]) | 0; break;
+      case 2: s2 = (s2 + arr[i]) | 0; break;
+      case 3: s3 = (s3 + arr[i]) | 0; break;
+    }
+  }
+  return (s3 + (s2 << 8) + (s1 << 16) + (s0 << 24)) >>> 0;
+}
+EOF
+cd /tmp/checksum-review2
+./.auto/checks.sh; echo "checks exit=$?"       # expect 0 — the suite cannot see it
+node bench.js > out.txt 2> err.txt; echo "bench exit=$?"  # expect 1, out.txt empty
+cat err.txt                                    # expect result validation failed
+```
+
 **Design conformance**
 
 - [ ] All `bench.js` calls before the timed loop pass `Uint8Array` (grep for
       array literals / `Buffer` in the smoke section) — see §4.
+- [ ] Timed results are validated: `bench.js` compares every result against
+      `expected` (grep `result !== expected`) — G6.
+- [ ] Inputs are aperiodic: `generateInput` stream-fills the buffer (grep for
+      the absence of `buffer.set(tile…)` repetition) — D12.
 - [ ] stdout of `bench.js` carries only `METRIC` lines; errors go to stderr.
 - [ ] `.auto/measure.sh` and `.auto/checks.sh` are executable and path-safe.
 - [ ] `.auto/prompt.md` off-limits list covers `bench.js`, `test/**`,
@@ -216,7 +263,9 @@ node bench.js > out.txt; echo "bench exit=$?"   # expect 1, out.txt empty
    ~2 ms and timer/scheduling overhead grows relatively. Mitigation exists
    (`BENCH_MB`/`BENCH_RUNS`), but a reviewer may want a floor on runs.
 2. **Absolute numbers are machine-specific.** The metric is meaningful within a
-   session (baseline vs candidate), not across machines.
+   session (baseline vs candidate), not across machines. Timings also drift a
+   few per cent run to run with system load; `spread_pct` reports the
+   within-run noise.
 3. **Out-of-contract inputs.** `number[]` values outside 0..255 are explicitly
    not pinned. The implementation's mod-2³² behavior is incidental; only byte
    values are contractual.
@@ -229,3 +278,8 @@ node bench.js > out.txt; echo "bench exit=$?"   # expect 1, out.txt empty
 7. **OpenSpec.** This repo has no initialized OpenSpec project. If the team
    wants these plans tracked as a formal OpenSpec change instead of a Markdown
    document, that conversion can be done after review.
+8. **Benchmark-specific mechanisms.** `bench.js` is readable and the workload
+   is deterministic; a targeted implementation could special-case the exact
+   inputs while still returning correct results. G6 catches wrong results, not
+   a correct-but-non-general mechanism. The guard stack is sized for a
+   workshop loop, not adversarial code.
