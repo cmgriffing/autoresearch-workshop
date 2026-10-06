@@ -244,16 +244,15 @@ function main() {
   // Aggregate metrics from the timed run.
   let totalMs = 0;
   let totalStatements = 0;
-  let totalDistinct = 0;
   let totalScans = 0;
   const perScenario = [];
   for (const r of timedResults) {
     totalMs += r.elapsed;
     totalStatements += r.metrics.statements;
-    totalDistinct += r.metrics.distinct_statements;
     totalScans += r.metrics.full_scans;
     perScenario.push({ name: r.name, ms: r.elapsed });
   }
+  const totalDistinct = timed.instrumented.totalDistinct();
 
   // Clean up run databases.
   try { rmSync(timed.path); } catch {}

@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks';
 import { renderChart } from '../src/index.js';
 
 const viewport = { width: 800, height: 400, padding: 30 };
-const FIDELITY_THRESHOLD_PX = 6.0; // allows moderate downsampling; visible detail loss fails
+const FIDELITY_THRESHOLD_PX = 6.0;
 
 // Deterministic PRNG so the workload is reproducible across runs.
 function mulberry32(a) {
@@ -125,9 +125,8 @@ function analyzeRendered(svg, dataset) {
     const innerW = viewport.width - 2 * viewport.padding;
     const innerH = viewport.height - 2 * viewport.padding;
 
-    // Vertical deviation of each source point from the rendered polyline.
-    // The rendered path may have fewer points than the source data (simplification),
-    // so we interpolate the line segment that spans the source x coordinate.
+    // Vertical deviation of each source point from the rendered polyline;
+    // interpolate the segment that spans the source x coordinate.
     let seg = 0;
     for (let i = 0; i < src.length; i++) {
       const ex =

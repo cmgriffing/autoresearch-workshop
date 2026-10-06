@@ -4,6 +4,7 @@ export function createInstrumentedDatabase(path) {
   const db = new DatabaseSync(path);
   const statements = [];
   const distinct = new Set();
+  const runDistinct = new Set();
   let fullScans = 0;
 
   // Capture originals before wrapping.
@@ -13,6 +14,7 @@ export function createInstrumentedDatabase(path) {
   function record(sql) {
     statements.push(sql);
     distinct.add(sql);
+    runDistinct.add(sql);
   }
 
   function countFullScan(sql) {
@@ -67,6 +69,9 @@ export function createInstrumentedDatabase(path) {
       statements.length = 0;
       distinct.clear();
       fullScans = 0;
+    },
+    totalDistinct() {
+      return runDistinct.size;
     },
     close() {
       db.close();

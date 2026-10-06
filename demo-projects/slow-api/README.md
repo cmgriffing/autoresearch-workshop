@@ -80,5 +80,4 @@ The benchmark exits non-zero if the oracle detects a result mismatch.
 - The harness owns the workload: dataset sizes, seeds, scenario list and parameters live in `bench/` and are not tuning knobs.
 - The benchmark supplies the instrumented database handle; application-side changes cannot affect counting.
 - Durability must be preserved: disabling synchronous writes or equivalent durability settings is out of contract.
-- Batching writes inside a transaction is allowed.
-- Schema changes (indexes, query text) are in scope because the schema lives in `src/`.
+- Table definitions and query text live in `src/` and are in scope.
