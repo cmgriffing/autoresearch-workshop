@@ -2,6 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createSimulation } from '../src/simulation.js';
 
+const TOLERANCE = 1e-12;
+
 function fakeCanvas(width, height) {
   const ctx = {
     clearRect() {},
@@ -41,6 +43,9 @@ describe('populations', () => {
     sim.draw();
     const after = sim.particles[0];
     assert.ok(Number.isFinite(after.x) && Number.isFinite(after.y));
-    assert.notDeepEqual(after, before);
+    const moved =
+      Math.abs(after.x - before.x) > TOLERANCE ||
+      Math.abs(after.y - before.y) > TOLERANCE;
+    assert.ok(moved, 'particle did not move');
   });
 });

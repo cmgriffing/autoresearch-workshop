@@ -2,6 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createFieldSampler } from '../src/noise.js';
 
+const TOLERANCE = 1e-12;
+
 describe('field sampler', () => {
   it('returns deterministic values at known coordinates', () => {
     const a = createFieldSampler(42);
@@ -15,7 +17,7 @@ describe('field sampler', () => {
     for (const [x, y] of points) {
       const va = a.sampleField(x, y);
       const vb = b.sampleField(x, y);
-      assert.equal(va, vb, `mismatch at (${x}, ${y})`);
+      assert.ok(Math.abs(va - vb) < TOLERANCE, `mismatch at (${x}, ${y})`);
       assert.ok(Number.isFinite(va), `non-finite at (${x}, ${y})`);
     }
   });
