@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Vite application measured on critical-path compressed size",
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test test/*.test.js",
     "bench": "node bench/bench.js",
     "verify": "node verify.js",
     "dev": "vite --config src/vite.config.js",
