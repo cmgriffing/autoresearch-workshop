@@ -8,12 +8,12 @@ Autoresearch is a technique created by Andrej Karpathy for training models. [lin
 
 However, the same approach can be used to optimize basically anything that has a measurable goal. Tobias Lutke, of Shopify fame, created a plugin for pi that uses this technique, but other autoresearch plugins exist for other harnesses as well:
 
-- [tobiaslutke/pi-autoresearch](https://github.com/tobiaslutke/pi-autoresearch)
+- [davebcn87/pi-autoresearch](https://github.com/davebcn87/pi-autoresearch)
 - [drivelineresearch/autoresearch-claude-code](https://github.com/drivelineresearch/autoresearch-claude-code)
 - [moedesux/autoresearch-opencode](https://github.com/moedesux/autoresearch-opencode)
 - [uditgoenka/autoresearch](https://github.com/uditgoenka/autoresearch)(Claude, OpenCode, Codex)
 
-This workshop will focus on using [pi-autoresearch](https://github.com/tobiaslutke/pi-autoresearch). But you can use any one you want, I. just won't be able to help as much with troubleshooting.
+This workshop will focus on using [pi-autoresearch](https://github.com/davebcn87/pi-autoresearch). But you can use any one you want, I just won't be able to help as much with troubleshooting.
 
 ## Demo Projects
 
