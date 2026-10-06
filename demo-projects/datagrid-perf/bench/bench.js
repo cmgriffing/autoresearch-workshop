@@ -18,7 +18,7 @@ const srcEntry = resolve(projectRoot, "src/index.jsx");
 const outDir = resolve(projectRoot, ".cache/bench-dist");
 
 // Workload definition (harness-owned).
-const ROW_COUNT = 300;
+const ROW_COUNT = 2000;
 const VIEWPORT = { width: 800, height: 600 };
 const TIMED_SEED = 12345;
 const VERIFY_SEED = 67890;
@@ -379,6 +379,12 @@ async function main() {
   const phaseMountMs = median(results.map((r) => r.phaseMountMs));
   const phaseInteractionMs = median(results.map((r) => r.phaseInteractionMs));
   const phaseBackgroundMs = median(results.map((r) => r.phaseBackgroundMs));
+
+  if (commits === 0 || renderMs === 0) {
+    throw new Error(
+      "Profiler reported no render work; is the profiling build selected?",
+    );
+  }
 
   console.log("datagrid-perf benchmark");
   console.log(`iterations=${ITERATIONS} rows=${ROW_COUNT} viewport=${VIEWPORT.width}x${VIEWPORT.height}`);
