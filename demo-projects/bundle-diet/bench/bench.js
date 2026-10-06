@@ -22,12 +22,12 @@ function captureConfigPlugin() {
   return {
     name: 'bundle-diet-capture-config',
     configResolved(config) {
+      const rel = (value) =>
+        typeof value === 'string' && path.isAbsolute(value) ? path.relative(repoRoot, value) : value;
       capturedConfig = {
         sourcemap: config.build.sourcemap,
         target: config.build.target,
-        input: config.build.rollupOptions.input,
-        outDir: config.build.outDir,
-        emptyOutDir: config.build.emptyOutDir,
+        input: rel(config.build.rollupOptions.input),
       };
     },
   };

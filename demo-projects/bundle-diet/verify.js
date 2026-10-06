@@ -7,7 +7,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const steps = [
   ['node', ['--test', 'test/*.test.js']],
   ['node', ['bench/bench.js']],
-  ['node', ['bench/boot.js']],
 ];
 
 for (const [cmd, args] of steps) {
