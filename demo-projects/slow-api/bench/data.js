@@ -2,11 +2,11 @@ import { DatabaseSync } from 'node:sqlite';
 import { setupSchema } from '../src/index.js';
 
 export const COUNTS = {
-  customers: 10_000,
-  products: 5_000,
-  orders: 50_000,
-  order_items: 150_000,
-  reviews: 25_000,
+  customers: 50_000,
+  products: 25_000,
+  orders: 250_000,
+  order_items: 750_000,
+  reviews: 125_000,
 };
 
 const CITIES = [

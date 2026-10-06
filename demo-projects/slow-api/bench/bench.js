@@ -1,8 +1,7 @@
-import { randomBytes } from 'node:crypto';
-import { existsSync, copyFileSync, mkdirSync, rmSync } from 'node:fs';
+import { randomBytes, createHash } from 'node:crypto';
+import { existsSync, copyFileSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 
 import { createApp, setupSchema } from '../src/index.js';
@@ -48,6 +47,16 @@ function freshRunDb(seed) {
   const instrumented = createInstrumentedDatabase(runPath);
   setupSchema(instrumented.db);
   return { path: runPath, instrumented };
+}
+
+function freshRunDbPlain(seed) {
+  const base = ensureBaseDatabase(seed);
+  const runId = randomBytes(8).toString('hex');
+  const runPath = join(CACHE, `run-${seed}-${runId}.db`);
+  copyFileSync(base, runPath);
+  const db = new DatabaseSync(runPath);
+  setupSchema(db);
+  return { path: runPath, db };
 }
 
 function findBusyIds(db) {
@@ -127,30 +136,87 @@ function runScenarios(instrumented, scenarioList) {
   return results;
 }
 
-function verifyScenarios(appResults, scenarioList, seed) {
-  const refPath = join(CACHE, `reference-${seed}.db`);
-  if (existsSync(refPath)) rmSync(refPath);
-  buildReferenceDatabase(refPath, seed);
-  const refDb = new DatabaseSync(refPath);
+function runScenariosWithoutInstrumentation(db, scenarioList) {
+  const handle = createApp(db);
+  const results = [];
+  for (const { name, request } of scenarioList) {
+    results.push({ name, response: handle(request) });
+  }
+  return results;
+}
 
-  const fullRefPath = join(CACHE, `reference-full-${seed}.db`);
+function goldenPath(seed, workloadHash) {
+  return join(CACHE, `goldens-${seed}-${workloadHash}.json`);
+}
+
+function loadGoldens(seed, workloadHash) {
+  const path = goldenPath(seed, workloadHash);
+  if (!existsSync(path)) return null;
+  return JSON.parse(readFileSync(path, 'utf8'));
+}
+
+function saveGoldens(seed, workloadHash, goldens) {
+  const path = goldenPath(seed, workloadHash);
+  writeFileSync(path, JSON.stringify(goldens, null, 2));
+}
+
+function generateGoldens(scenarioList, seed, workloadHash) {
+  // Cross-check the reference implementation on a small reference dataset.
+  // The write path is excluded from this check because it mutates the database;
+  // it is still covered by the full-dataset goldens and the test suite.
+  const smallRefPath = join(CACHE, `reference-${seed}.db`);
+  if (existsSync(smallRefPath)) rmSync(smallRefPath);
+  buildReferenceDatabase(smallRefPath, seed);
+  const smallRefDb = new DatabaseSync(smallRefPath);
+  const smallIds = { customerId: 1, productId: 1, orderId: 1 };
+  const smallScenarios = buildScenarios(smallIds).filter((s) => s.name !== 'write_order');
+  const smallAppResults = runScenariosWithoutInstrumentation(smallRefDb, smallScenarios);
+  for (let i = 0; i < smallScenarios.length; i++) {
+    const expected = computeReference(smallScenarios[i].request, smallRefDb);
+    if (!deepEqual(normalizeResponse(expected), normalizeResponse(smallAppResults[i].response))) {
+      throw new Error(`reference cross-check failed for scenario "${smallScenarios[i].name}"`);
+    }
+  }
+  smallRefDb.close();
+  rmSync(smallRefPath);
+
+  // Derive full-dataset goldens from the reference implementation against a pristine
+  // copy of the base database. A copy is used because the write scenario mutates state.
+  const basePath = ensureBaseDatabase(seed);
+  const fullRefPath = join(CACHE, `reference-full-${seed}-${workloadHash}.db`);
   if (existsSync(fullRefPath)) rmSync(fullRefPath);
-  const baseFull = ensureBaseDatabase(seed);
-  copyFileSync(baseFull, fullRefPath);
+  copyFileSync(basePath, fullRefPath);
   const fullRefDb = new DatabaseSync(fullRefPath);
+  const goldens = {};
+  for (const { name, request } of scenarioList) {
+    goldens[name] = computeReference(request, fullRefDb);
+  }
+  fullRefDb.close();
+  rmSync(fullRefPath);
+  saveGoldens(seed, workloadHash, goldens);
+  return goldens;
+}
 
+function ensureGoldens(scenarioList, seed, workloadHash) {
+  let goldens = loadGoldens(seed, workloadHash);
+  if (!goldens) {
+    const start = performance.now();
+    goldens = generateGoldens(scenarioList, seed, workloadHash);
+    console.log(`generated goldens for seed ${seed} in ${(performance.now() - start).toFixed(1)} ms`);
+  }
+  return goldens;
+}
+
+function verifyScenarios(appResults, scenarioList, seed, workloadHash) {
+  const goldens = ensureGoldens(scenarioList, seed, workloadHash);
   for (let i = 0; i < scenarioList.length; i++) {
-    const { name, request } = scenarioList[i];
+    const { name } = scenarioList[i];
     const actual = appResults[i].response;
-
-    const fullExpected = computeReference(request, fullRefDb);
-    if (!deepEqual(normalizeResponse(fullExpected), normalizeResponse(actual))) {
+    const expected = goldens[name];
+    if (!deepEqual(normalizeResponse(expected), normalizeResponse(actual))) {
       throw new Error(`oracle mismatch in scenario "${name}" for seed ${seed}`);
     }
   }
-
-  refDb.close();
-  fullRefDb.close();
 }
 
 function main() {
@@ -167,13 +233,13 @@ function main() {
   const timed = freshRunDb(TIMED_SEED);
   const timedResults = runScenarios(timed.instrumented, scenarioList);
 
-  // Verification run on a different seed.
-  const verify = freshRunDb(VERIFY_SEED);
-  const verifyResults = runScenarios(verify.instrumented, scenarioList);
+  // Verification run on a different seed (plain DB, no instrumentation overhead).
+  const verify = freshRunDbPlain(VERIFY_SEED);
+  const verifyResults = runScenariosWithoutInstrumentation(verify.db, scenarioList);
 
   // Cross-check expected results.
-  verifyScenarios(timedResults, scenarioList, TIMED_SEED);
-  verifyScenarios(verifyResults, scenarioList, VERIFY_SEED);
+  verifyScenarios(timedResults, scenarioList, TIMED_SEED, workloadHash);
+  verifyScenarios(verifyResults, scenarioList, VERIFY_SEED, workloadHash);
 
   // Aggregate metrics from the timed run.
   let totalMs = 0;
