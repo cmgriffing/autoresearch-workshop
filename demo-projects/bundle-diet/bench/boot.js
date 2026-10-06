@@ -4,9 +4,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { routes } from './routes.js';
+import { VERIFY_SEED, deterministicShuffle } from './lib.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const distDir = path.resolve(__dirname, '..', 'dist');
+const defaultDistDir = path.resolve(__dirname, '..', '.cache', 'dist');
 
 const mimeTypes = {
   '.html': 'text/html',
@@ -18,7 +19,7 @@ const mimeTypes = {
   '.ico': 'image/x-icon',
 };
 
-function serve(req, res) {
+function serve(req, res, distDir) {
   let url = decodeURIComponent(req.url.split('?')[0]);
   if (url === '/') url = '/index.html';
   const filePath = path.join(distDir, url);
@@ -39,12 +40,12 @@ function serve(req, res) {
   res.end(fs.readFileSync(filePath));
 }
 
-async function main() {
+export async function runBoot({ distDir = defaultDistDir, seed = VERIFY_SEED } = {}) {
   if (!fs.existsSync(distDir)) {
     throw new Error(`dist/ not found at ${distDir}; run the build first`);
   }
 
-  const server = createServer(serve);
+  const server = createServer((req, res) => serve(req, res, distDir));
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
   const baseUrl = `http://127.0.0.1:${port}`;
@@ -53,24 +54,33 @@ async function main() {
   const context = await browser.newContext();
   const page = await context.newPage();
 
+  const verifyRoutes = deterministicShuffle(routes, seed);
+
   const t0 = performance.now();
-  await page.goto(baseUrl + '/');
+  await page.goto(`${baseUrl}/?v=${seed}`);
   await page.waitForSelector(`text=${routes[0].marker}`, { timeout: 10000 });
   const bootMs = performance.now() - t0;
 
-  for (const route of routes) {
-    await page.goto(`${baseUrl}/#${route.path}`);
+  for (const route of verifyRoutes) {
+    await page.goto(`${baseUrl}/?v=${seed}#${route.path}`);
     await page.waitForSelector(`text=${route.marker}`, { timeout: 10000 });
   }
 
   await browser.close();
   server.close();
 
+  return bootMs;
+}
+
+async function main() {
+  const bootMs = await runBoot();
   console.log(`Booted ${routes.length} routes in ${bootMs.toFixed(1)} ms`);
   console.log(`METRIC boot_ms=${Math.round(bootMs)}`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
