@@ -1,0 +1,13 @@
+{
+  "name": "slow-api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "SQLite-backed request handler demo",
+  "scripts": {
+    "test": "node --test test/test.js",
+    "bench": "node bench/bench.js",
+    "verify": "node verify.js",
+    "dev": "node server.js"
+  }
+}

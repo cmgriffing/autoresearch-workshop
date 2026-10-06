@@ -1,0 +1,23 @@
+{
+  "name": "bundle-diet",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Vite application measured on critical-path compressed size",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "bench": "node bench/bench.js",
+    "verify": "node verify.js",
+    "dev": "vite --config src/vite.config.js",
+    "build": "vite build --config src/vite.config.js"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.1.2",
+    "playwright": "1.62.0",
+    "vite": "8.3.2"
+  }
+}
