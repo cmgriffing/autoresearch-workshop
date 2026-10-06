@@ -8,7 +8,7 @@ export default function Card({ title }) {
     React.createElement(
       'p',
       null,
-      'This card component is re-exported through the component barrel, so it stays on the critical path even when only one page uses it.'
+      'A compact card component that displays a title and a short description.'
     )
   );
 }

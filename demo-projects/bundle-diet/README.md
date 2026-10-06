@@ -52,7 +52,7 @@ real Chromium browser.
 
 - Only files under `src/` may be changed during an optimization session.
 - The workload is owned by `bench/`; do not shrink the application below the
-  feature set described in the lane spec.
+  feature set required by the route table above.
 - The benchmark must exit non-zero if the oracle detects missing routes,
   stubbed content, broken dynamic imports, or a mismatch between the harness
   route list and the application routes.

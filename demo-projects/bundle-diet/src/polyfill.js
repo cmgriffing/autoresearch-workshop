@@ -1,4 +1,3 @@
-// Small runtime shim kept for legacy browser support.
 globalThis.__bundleDietPolyfill = (function buildPolyfill() {
   const table = [];
   for (let i = 0; i < 800; i++) {
