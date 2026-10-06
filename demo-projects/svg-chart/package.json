@@ -5,7 +5,7 @@
   "type": "module",
   "description": "SVG chart path generation demo",
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test",
     "bench": "node bench/bench.js",
     "verify": "node verify.js"
   }
