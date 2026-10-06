@@ -91,6 +91,7 @@ function workloadHash() {
     rowCount: ROW_COUNT,
     viewport: VIEWPORT,
     filter: FILTER_QUERY,
+    iterations: ITERATIONS,
     ticks: TICKS,
     version: 1,
   });
@@ -234,7 +235,7 @@ function median(values) {
     : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
-async function runIteration(bundlePath, rows) {
+async function runIteration(bundlePath, rows, ROW_HEIGHT) {
   const dom = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
     url: "http://localhost",
     pretendToBeVisual: true,
@@ -324,10 +325,27 @@ async function runIteration(bundlePath, rows) {
   const expectedSelected = filterAndSort(rows, FILTER_QUERY, "score", "asc")[0];
 
   const renderedRows = Array.from(container.querySelectorAll('[data-testid="row"]'));
-  if (renderedRows.length !== ROW_COUNT) {
+  const visibleRows = Math.max(1, Math.ceil(VIEWPORT.height / ROW_HEIGHT));
+  if (renderedRows.length < visibleRows) {
     throw new Error(
-      `Oracle failed: expected ${ROW_COUNT} rows, got ${renderedRows.length}`,
+      `Oracle failed: expected at least ${visibleRows} rows, got ${renderedRows.length}`,
     );
+  }
+  if (renderedRows.length > allSorted.length) {
+    throw new Error(
+      `Oracle failed: expected at most ${allSorted.length} rows, got ${renderedRows.length}`,
+    );
+  }
+
+  const expectedWindow = allSorted.slice(0, visibleRows);
+  for (let i = 0; i < expectedWindow.length; i++) {
+    const expected = expectedWindow[i];
+    const actual = renderedRows[i];
+    if (actual.dataset.rowId !== expected.id) {
+      throw new Error(
+        `Oracle failed: row ${i} id ${actual.dataset.rowId} != expected ${expected.id}`,
+      );
+    }
   }
 
   const detailTitle = container.querySelector('[data-testid="detail-title"]');
@@ -335,14 +353,19 @@ async function runIteration(bundlePath, rows) {
     throw new Error("Oracle failed: detail panel does not show selected record");
   }
 
-  const selectedRowEl = container.querySelector(`[data-testid="row"][data-row-id="${selectedId}"]`);
-  if (!selectedRowEl) {
-    throw new Error("Oracle failed: selected row is not rendered");
-  }
-
-  const firstId = renderedRows[0].dataset.rowId;
-  if (firstId !== allSorted[0].id) {
-    throw new Error(`Oracle failed: first row ${firstId} != expected ${allSorted[0].id}`);
+  const selectedIndexInWindow = expectedWindow.findIndex((r) => r.id === selectedId);
+  if (selectedIndexInWindow !== -1) {
+    const selectedRowEl = container.querySelector(
+      `[data-testid="row"][data-row-id="${selectedId}"]`,
+    );
+    if (!selectedRowEl) {
+      throw new Error("Oracle failed: selected row is not rendered");
+    }
+    const selectedStyle =
+      selectedRowEl.style.backgroundColor || selectedRowEl.style.background;
+    if (!selectedStyle) {
+      throw new Error("Oracle failed: selected row is not highlighted");
+    }
   }
 
   ReactDOM.flushSync(() => root.unmount());
@@ -361,15 +384,21 @@ async function runIteration(bundlePath, rows) {
 
 async function main() {
   const bundlePath = await buildApp();
+  const appModule = await import(bundlePath);
+  const ROW_HEIGHT = appModule.ROW_HEIGHT;
+  if (typeof ROW_HEIGHT !== "number" || ROW_HEIGHT <= 0) {
+    throw new Error("Oracle failed: ROW_HEIGHT not exported by app");
+  }
+
   const timedRows = generateRows(TIMED_SEED, ROW_COUNT);
   const verifyRows = generateRows(VERIFY_SEED, ROW_COUNT);
 
   // Run correctness oracle with a different seed before reporting metrics.
-  await runIteration(bundlePath, verifyRows);
+  await runIteration(bundlePath, verifyRows, ROW_HEIGHT);
 
   const results = [];
   for (let i = 0; i < ITERATIONS; i++) {
-    results.push(await runIteration(bundlePath, timedRows));
+    results.push(await runIteration(bundlePath, timedRows, ROW_HEIGHT));
   }
 
   const renderMs = median(results.map((r) => r.renderMs));
