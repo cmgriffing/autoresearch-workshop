@@ -40,3 +40,9 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# Demo benchmark generated state (version-ignored: survives reverts, reset per run)
+demo-projects/*/.cache/
+
+# Instructor material (untracked by design; no answer key in tracked files)
+instructor-notes/

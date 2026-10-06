@@ -1,0 +1,16 @@
+{
+  "name": "canvas-particles",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "2D particle simulation measured on frame cost",
+  "scripts": {
+    "test": "node --test test/",
+    "bench": "node bench/bench.js",
+    "verify": "node verify.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "1.0.10"
+  }
+}

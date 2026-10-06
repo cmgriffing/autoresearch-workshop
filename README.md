@@ -15,6 +15,25 @@ However, the same approach can be used to optimize basically anything that has a
 
 This workshop will focus on using [pi-autoresearch](https://github.com/tobiaslutke/pi-autoresearch). But you can use any one you want, I. just won't be able to help as much with troubleshooting.
 
+## Demo Projects
+
+`demo-projects/` contains target projects for autoresearch sessions. Each one is a small
+application with a deliberate performance ceiling, a low-noise metric, a correctness
+gate, and instrumentation that makes its bottleneck observable. See
+[`demo-projects/README.md`](./demo-projects/README.md) for the shared contract.
+
+| Demo | Objective metric (lower is better) | Prerequisite |
+| --- | --- | --- |
+| [`demo-projects/svg-chart`](./demo-projects/svg-chart) | `ms` | none — plain Node, zero dependencies |
+| [`demo-projects/slow-api`](./demo-projects/slow-api) | `scenario_ms` | none — uses the built-in `node:sqlite` module |
+| [`demo-projects/bundle-diet`](./demo-projects/bundle-diet) | `critical_gzip_kb` | Chromium for the boot oracle: `pnpm exec playwright install chromium` |
+| [`demo-projects/datagrid-perf`](./demo-projects/datagrid-perf) | `render_ms` | none — jsdom and Vitest install with the workspace |
+| [`demo-projects/canvas-particles`](./demo-projects/canvas-particles) | `total_ms` | none — `@napi-rs/canvas` installs a prebuilt binary |
+
+Install the workspace once from the repository root (`pnpm install`). Each demo then
+provides `test`, `bench` and `verify` scripts; `pnpm --filter <demo> verify` is the
+pre-flight check.
+
 ## Requirements
 
 Before the workshop begins you may want to have a few things installed to save time and keep from overloading the Wi-fi network.

@@ -1,0 +1,12 @@
+{
+  "name": "svg-chart",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "SVG chart path generation demo",
+  "scripts": {
+    "test": "node --test test/",
+    "bench": "node bench/bench.js",
+    "verify": "node verify.js"
+  }
+}
