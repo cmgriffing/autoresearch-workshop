@@ -227,7 +227,7 @@ function main() {
   idDb.close();
 
   const scenarioList = buildScenarios(timedIds);
-  const workloadHash = hashWorkload({ ids: timedIds });
+  const workloadHash = hashWorkload({ ids: timedIds, scenarios: scenarioList });
 
   // Timed run.
   const timed = freshRunDb(TIMED_SEED);
