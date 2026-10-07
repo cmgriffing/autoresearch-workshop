@@ -1,32 +1,11 @@
-# React + TypeScript + Vite
+# dbmon-react
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This is a demo project for the autoresearch workshop.
+It is a React app that displays a list of databases and their queries.
+The goal is to optimize the performance of the React code.
 
-Currently, two official plugins are available:
+## Attribution
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The Javascript code in the public folder is copied from [https://github.com/mathieuancelin/js-repaint-perfs](https://github.com/mathieuancelin/js-repaint-perfs)
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The code in App.tsx is rewritten into modern hook-based react from the same `js-repaint-perfs` repo.
