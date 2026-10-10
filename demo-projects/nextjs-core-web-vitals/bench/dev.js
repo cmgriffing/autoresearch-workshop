@@ -13,40 +13,40 @@
  * ephemeral port per run and measures a production build.
  */
 
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { SEEDS } from './dataset.js';
-import { startOrigins } from './origins.js';
-import { spawnTree, stopTree } from './process.js';
+import { createRequire } from "node:module";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { SEEDS } from "./dataset.js";
+import { startOrigins } from "./origins.js";
+import { spawnTree, stopTree } from "./process.js";
 
 const require = createRequire(import.meta.url);
-const NEXT_BIN = require.resolve('next/dist/bin/next');
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const NEXT_BIN = require.resolve("next/dist/bin/next");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const argv = process.argv.slice(2);
-const portIndex = argv.indexOf('--port');
+const portIndex = argv.indexOf("--port");
 const port = portIndex !== -1 ? argv[portIndex + 1] : process.env.PORT;
-const appArgs = ['dev'];
-if (port) appArgs.push('-p', String(port));
+const appArgs = ["start"];
+if (port) appArgs.push("-p", String(port));
 
 const origins = await startOrigins();
 const app = spawnTree(process.execPath, [NEXT_BIN, ...appArgs], {
   cwd: ROOT,
   env: { ...process.env, PIM_URL: origins.url },
-  stdio: 'inherit',
+  stdio: "inherit",
 });
 
 const base = `http://localhost:${port ?? 3000}`;
 process.stdout.write(
   [
-    '',
+    "",
     `fixture origins: ${origins.url}  (PIM API, image CDN, fonts)`,
-    'open the storefront:',
+    "open the storefront:",
     ...SEEDS.map((seed) => `  ${base}/?seed=${seed}`),
-    'stop with Ctrl-C.',
-    '',
-  ].join('\n'),
+    "stop with Ctrl-C.",
+    "",
+  ].join("\n"),
 );
 
 let stopping = false;
@@ -58,9 +58,9 @@ const shutdown = async (code) => {
   process.exit(code);
 };
 
-process.on('SIGINT', () => shutdown(0));
-process.on('SIGTERM', () => shutdown(0));
-app.on('exit', (code, signal) => {
+process.on("SIGINT", () => shutdown(0));
+process.on("SIGTERM", () => shutdown(0));
+app.on("exit", (code, signal) => {
   // The dev server stopping (or failing to start) ends the session too.
   shutdown(signal ? 0 : (code ?? 0));
 });
