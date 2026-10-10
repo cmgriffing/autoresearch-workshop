@@ -29,7 +29,7 @@ paint fails the run.
 - `pnpm verify` — both, the way the instructor runs them
 
 The benchmark builds the app and boots the bench-owned origins itself; the
-first run on a machine captures the oracle baseline (or run `pnpm setup`).
+first run on a machine captures the oracle baseline (or run `pnpm run setup`).
 
 `spread_pct` above ~5% means the machine was noisy; re-run before trusting a
 small win.

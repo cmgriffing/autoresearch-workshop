@@ -4,7 +4,7 @@
   "algorithm": "sha256(normalized content)",
   "files": {
     "AGENTS.md": "f2c6b42390c0f2b2ed1cfd02d4bed7f350f4df7fbeefa8ed5bc3f0d62cf3af28",
-    "README.md": "756d21c59b03ab793f50a2aad9eb0102a9558be9721b5c3709a5b7d6f3236ae5",
+    "README.md": "d57e6afcf7938327ac55e6ffb22bcea419dcb3102a8e3ff178d19864d6e61b12",
     "app/components/AddToCart.jsx": "329cebc2d1362ba234a7e951cbf5f3dc9592d992dfae981a4e2924a7ec8938d0",
     "app/components/CartCount.jsx": "acc71a4e74f0579c0178cfb109494b69e2494bac206bdd4124790d836d489350",
     "app/components/CartProvider.jsx": "7b6d28a408430ee80b48b37ea90a5a2989a2615b4c94fc1e1804e2dd9797035d",

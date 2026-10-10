@@ -41,13 +41,15 @@ worst-of-run (`*_worst`) variants, `spread_pct`, the oracle signals
 From this directory (or `pnpm --filter nextjs-core-web-vitals <script>`):
 
 ```sh
-pnpm setup     # once per machine: clean-state check, baseline capture, one bench pass
+pnpm run setup # once per machine: clean-state check, baseline capture, one bench pass
 pnpm verify    # pre-flight check: correctness suite, then the benchmark
 pnpm bench     # the benchmark alone (oracle-gated)
 ```
 
 `pnpm dev` runs the raw Next.js dev server but needs the bench-owned origins;
-it is for UI work only, not measurement.
+it is for UI work only, not measurement. `pnpm setup` is a pnpm built-in command,
+so the setup script is invoked as `pnpm run setup` (or
+`pnpm --filter nextjs-core-web-vitals run setup`).
 
 **Prerequisite:** Chromium for Playwright. It is the same browser the other
 browser demo uses:
@@ -58,7 +60,7 @@ pnpm exec playwright install chromium
 
 ### Setup, baselines and pristine state
 
-`pnpm setup` requires the demo directory to be **pristine**: every tracked file
+`pnpm run setup` requires the demo directory to be **pristine**: every tracked file
 must match the content manifest at `bench/fixtures/demo-manifest.json`. The
 check is content-based and demo-scoped — it never consults git, so branches,
 stashes and dirty files elsewhere in the repository are invisible to it. Setup

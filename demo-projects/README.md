@@ -99,10 +99,10 @@ Heavy-tier rules:
   and applies it before navigation; a fresh browser context is used for every load.
 - Generated state lives under `.cache/` as usual. The harness resets the caches it owns
   per invocation and never touches the machine-local oracle baseline.
-- Baselines and screenshots are captured by `pnpm setup` on the measuring machine,
+- Baselines and screenshots are captured by `pnpm run setup` on the measuring machine,
   stored under `.cache/oracle/`, keyed by fixture digests, viewport and browser major
   version. They are never committed and are recaptured when the key changes.
-- `pnpm setup` requires a pristine demo (content manifest) and runs one full benchmark
+- `pnpm run setup` requires a pristine demo (content manifest) and runs one full benchmark
   pass; it prints the baseline metric, so the ceiling is known before a session starts.
 
 ## Budget
