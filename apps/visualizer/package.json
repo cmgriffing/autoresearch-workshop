@@ -1,0 +1,30 @@
+{
+  "name": "visualizer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jotai": "3.0.1",
+    "react": "19.3.0",
+    "react-diff-view": "3.3.3",
+    "react-dom": "19.3.0",
+    "react-markdown": "10.1.0",
+    "recharts": "3.10.1",
+    "visualizar-common": "workspace:*"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@types/node": "24.19.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "tailwindcss": "4.3.3",
+    "typescript": "7.0.2",
+    "vite": "8.3.2"
+  }
+}

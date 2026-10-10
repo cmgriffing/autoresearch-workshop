@@ -1,0 +1,22 @@
+{
+  "name": "visualizer-api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/main.ts --dev",
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "check-types": "tsc --noEmit",
+    "test": "node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "visualizar-common": "workspace:*",
+    "fastify": "5.12.5",
+    "@fastify/static": "10.1.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "typescript": "7.0.2"
+  }
+}

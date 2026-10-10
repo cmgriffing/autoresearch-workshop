@@ -1,0 +1,8 @@
+{
+  "extends": ["//"],
+  "tasks": {
+    "build": { "outputs": ["dist/**"] },
+    "check-types": { "dependsOn": ["^build"] },
+    "dev": { "passThroughEnv": ["VISUALIZER_API_PORT"] }
+  }
+}

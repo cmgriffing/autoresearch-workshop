@@ -1,0 +1,916 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Avenir Next", "Avenir", "Trebuchet MS", sans-serif;
+  --font-mono: "SFMono-Regular", "Menlo", "Consolas", monospace;
+}
+:root {
+  font-family: var(--font-sans);
+  color: #1f302e;
+  background: #f8f7f2;
+  font-synthesis: none;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button {
+  cursor: pointer;
+  text-align: left;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #bd722d;
+  outline-offset: 3px;
+}
+button:hover {
+  filter: brightness(0.97);
+}
+.app-shell {
+  @apply grid min-h-screen;
+  grid-template-columns: 224px 288px minmax(0, 1fr);
+}
+.project-pane {
+  @apply flex flex-col p-5;
+  background: #1c302e;
+  color: #eef1e8;
+}
+.brand {
+  @apply flex items-center gap-3 pb-12 pt-3 text-lg font-semibold tracking-tight;
+}
+.brand-mark {
+  @apply flex h-10 w-10 items-center justify-center text-xl;
+  color: #263c35;
+  background: #e3e8ac;
+  border-radius: 11px;
+}
+.brand-sub {
+  @apply mt-1 block;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: #acbcb4;
+}
+.nav-heading {
+  @apply mb-4 flex justify-between text-xs uppercase tracking-widest;
+  color: #aebfb4;
+}
+.project-button {
+  @apply mb-2 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm;
+  color: #c7d0c9;
+}
+.refresh-button {
+  @apply mb-5 rounded-md border px-3 py-2 text-xs;
+  border-color: #6a8174;
+  color: #e0e8da;
+}
+.refresh-button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.root-group {
+  @apply mb-5 min-w-0;
+}
+.root-heading {
+  @apply text-xs font-medium leading-5;
+  overflow-wrap: anywhere;
+  color: #d7e0ce;
+}
+.root-mode {
+  @apply mt-1 mb-2 text-[10px];
+  color: #aebfb4;
+}
+.project-path {
+  overflow-wrap: anywhere;
+}
+.root-diagnostic {
+  overflow-wrap: anywhere;
+  color: #f0d0a3;
+}
+.project-button[aria-pressed="true"] {
+  background: #354b3f;
+  color: #f0f2dc;
+  box-shadow: inset 3px 0 #dbe8a9;
+}
+.project-icon {
+  @apply text-xl;
+  color: #b9c79b;
+}
+.project-button strong {
+  @apply block font-medium;
+}
+.project-button small {
+  @apply mt-1 block text-xs;
+  color: #b7c6b9;
+}
+.source-footer {
+  @apply mt-auto pt-10 text-xs;
+  color: #c4cfc5;
+}
+.source-dot {
+  @apply mr-2 inline-block h-1.5 w-1.5 rounded-full;
+  background: #cee09d;
+}
+.source-dot-disconnected {
+  background: #e6a261;
+}
+.source-dot-connecting {
+  background: #d4c474;
+}
+.source-dot-manual {
+  background: #a8baae;
+}
+.source-footer p {
+  @apply mt-2 ml-3.5;
+  color: #a8baae;
+}
+.experiment-pane {
+  @apply flex min-w-0 flex-col border-r;
+  border-color: #dce0d5;
+  background: #f0f1e9;
+}
+.experiment-header {
+  @apply border-b px-6 pt-7 pb-6;
+  border-color: #dce0d5;
+}
+.eyebrow {
+  @apply text-[10px] font-semibold uppercase tracking-[0.16em];
+  color: #67776b;
+}
+.experiment-header h2 {
+  @apply mt-3 flex justify-between text-lg font-semibold;
+}
+.experiment-header h2 span {
+  @apply text-sm font-normal;
+  color: #687669;
+}
+.experiment-header > p:last-child {
+  @apply mt-2 text-xs;
+  color: #687669;
+}
+.threshold-control {
+  @apply mt-4 block text-[10px] font-semibold uppercase tracking-wider;
+  color: #687669;
+}
+.threshold-control > span {
+  @apply mt-2 flex items-center gap-2 text-sm normal-case tracking-normal;
+}
+.threshold-control input {
+  @apply w-24 rounded-md border bg-white px-2 py-1.5 font-mono;
+  border-color: #cbd1c2;
+  color: #283a32;
+}
+.threshold-control input:focus-visible,
+.segment-summary select:focus-visible {
+  outline: 3px solid #bd722d;
+  outline-offset: 2px;
+}
+.experiment-list {
+  @apply flex-1 overflow-y-auto px-3 py-3;
+  max-height: calc(100vh - 146px);
+}
+.experiment-button {
+  @apply mb-2 block w-full rounded-lg border border-transparent p-3.5;
+}
+.experiment-button[aria-pressed="true"] {
+  border-color: #a4b082;
+  background: #fffef8;
+  box-shadow: 0 2px 4px #1c302e06;
+}
+.experiment-top {
+  @apply mb-3 flex items-center justify-between text-xs;
+}
+.experiment-top > span:first-child {
+  color: #748174;
+}
+.experiment-button > strong {
+  @apply text-xl font-medium;
+  font-variant-numeric: tabular-nums;
+}
+.experiment-button > strong > span {
+  @apply text-xs font-normal;
+  color: #687669;
+}
+.experiment-button > p {
+  @apply mt-2 line-clamp-2 text-xs leading-relaxed;
+  color: #5a685e;
+}
+.baseline-button {
+  border-color: #82916b;
+  background: #e8edda;
+}
+.win-change {
+  @apply rounded px-2 py-1 font-semibold;
+  background: #e2ead5;
+  color: #3c552e;
+}
+.outside-filter {
+  @apply mb-3 rounded border px-3 py-2 text-xs leading-5;
+  border-color: #d7b38d;
+  background: #fff5e8;
+  color: #795127;
+}
+.mono {
+  @apply font-mono;
+}
+.status {
+  @apply inline-block rounded px-2 py-1 text-[10px] font-semibold whitespace-nowrap;
+}
+.status-keep {
+  background: #e2ead5;
+  color: #3c552e;
+}
+.status-discard {
+  background: #e9e9e1;
+  color: #606456;
+}
+.status-crash,
+.status-checks_failed {
+  background: #f2dfd8;
+  color: #8b3f30;
+}
+.review-pane {
+  @apply min-w-0;
+}
+.review-header {
+  @apply flex items-center justify-between border-b px-10 py-6;
+  border-color: #e1e3d9;
+}
+.file-label {
+  @apply font-mono text-[10px];
+  color: #727c6e;
+}
+.review-content {
+  @apply mx-auto max-w-[1120px] px-10 pt-10 pb-8;
+}
+.session-title {
+  @apply mb-8;
+}
+.session-title h1 {
+  @apply mt-3 text-3xl font-medium tracking-tight;
+}
+.session-title > p:last-child {
+  @apply mt-3 text-sm;
+  color: #677568;
+}
+.segment-summary {
+  @apply mb-7 rounded-lg border p-5;
+  border-color: #d9ded0;
+  background: #f2f3eb;
+}
+.segment-summary > label {
+  @apply flex items-center justify-between gap-4 text-xs font-semibold;
+}
+.segment-summary select {
+  @apply min-w-0 rounded-md border bg-white px-3 py-2 text-sm font-normal;
+  border-color: #cbd1c2;
+}
+.segment-summary dl {
+  @apply mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4;
+}
+.segment-summary dt {
+  @apply text-[10px] uppercase tracking-wider;
+  color: #6f7c6b;
+}
+.segment-summary dd {
+  @apply mt-1 text-sm;
+}
+.result-card {
+  @apply border p-7;
+  border-color: #d9ded0;
+  background: #fffef9;
+  border-radius: 10px;
+}
+.chart-card {
+  @apply mb-6 rounded-lg border p-5;
+  border-color: #d9ded0;
+  background: #fffef9;
+}
+.chart-heading {
+  @apply flex flex-wrap items-center justify-between gap-3;
+}
+.chart-heading h2 {
+  @apply mt-2 text-lg font-medium;
+}
+.chart-heading > span {
+  @apply font-mono text-xs;
+  color: #677568;
+}
+.chart-context {
+  @apply mt-3 text-xs leading-6;
+  color: #59675b;
+}
+.chart-context a {
+  color: #37512f;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.attempt-chart {
+  @apply mt-4 min-w-0;
+}
+.attempt-marker {
+  cursor: pointer;
+  outline: none;
+}
+.attempt-marker:focus-visible .marker-ring,
+.attempt-marker:hover .marker-ring {
+  opacity: 1;
+}
+.recharts-surface:focus-visible {
+  outline: 3px solid #bd722d;
+  outline-offset: 2px;
+}
+.chart-legend {
+  @apply mt-2 flex flex-wrap gap-x-5 gap-y-2 text-[11px];
+  color: #59675b;
+}
+.chart-legend li {
+  @apply flex items-center gap-2;
+}
+.legend-baseline,
+.legend-win {
+  color: #3c552e;
+}
+.legend-line {
+  @apply inline-block w-5 border-t-2;
+  border-color: #81965e;
+}
+.failed-attempts {
+  @apply mt-4 border-t pt-4;
+  border-color: #e6e8df;
+}
+.failed-attempts > p {
+  @apply text-xs;
+  color: #8b3f30;
+}
+.failed-attempts > div {
+  @apply mt-3 flex flex-wrap gap-2;
+}
+.failed-attempts button {
+  @apply rounded-md border px-3 py-2 text-xs;
+  border-color: #dfb8a9;
+  color: #8b3f30;
+  background: #fff5ef;
+}
+.failed-attempts button[aria-pressed="true"] {
+  border-color: #8b3f30;
+  background: #f2dfd8;
+}
+.attempt-tooltip {
+  @apply rounded-md border px-3 py-2 text-xs leading-5 shadow-sm;
+  border-color: #bdc5b3;
+  background: #fffef9;
+  color: #283a32;
+}
+.chart-loading {
+  @apply mb-6 rounded-lg border p-5 text-sm;
+  min-height: 380px;
+  border-color: #d9ded0;
+}
+.run-details h3 {
+  @apply text-xs font-semibold;
+}
+.metric-references {
+  @apply mt-5 grid gap-4 rounded-md p-4 sm:grid-cols-2;
+  background: #f2f3eb;
+}
+.metric-references dt,
+.secondary-metrics dt,
+.advisory-diagnostics dt {
+  @apply text-[10px];
+  color: #6f7c6b;
+  overflow-wrap: anywhere;
+}
+.metric-references dd,
+.secondary-metrics dd,
+.advisory-diagnostics dd {
+  @apply mt-1 text-xs leading-5;
+  overflow-wrap: anywhere;
+}
+.secondary-metrics,
+.advisory-diagnostics {
+  @apply mt-5 border-t pt-5;
+  border-color: #e6e8df;
+}
+.secondary-metrics dl {
+  @apply mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3;
+}
+.secondary-metrics > p,
+.advisory-diagnostics > p {
+  @apply mt-2 text-xs leading-6;
+  color: #59675b;
+}
+.advisory-diagnostics dl {
+  @apply mt-3;
+}
+.advisory-diagnostics h4 {
+  @apply mt-4 text-xs font-medium;
+}
+.advisory-diagnostics pre {
+  @apply mt-3 max-h-72 overflow-auto rounded-md p-4 font-mono text-xs leading-5;
+  background: #eef0e4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.advisory-diagnostics pre:focus-visible {
+  outline: 3px solid #bd722d;
+  outline-offset: 2px;
+}
+.view-navigation {
+  @apply mb-6 flex flex-wrap gap-2;
+}
+.view-navigation button {
+  @apply rounded-md border px-4 py-2 text-xs font-semibold;
+  border-color: #cbd1c2;
+  color: #526155;
+}
+.view-navigation button[aria-pressed="true"] {
+  background: #e2ead5;
+  border-color: #82916b;
+  color: #304a29;
+}
+.document-card {
+  @apply rounded-lg border p-7;
+  border-color: #d9ded0;
+  background: #fffef9;
+}
+.document-card > h2 {
+  @apply mt-3 text-xl font-medium;
+}
+.document-context,
+.document-message {
+  @apply mt-3 text-sm leading-6;
+  color: #526155;
+}
+.document-path {
+  @apply mt-3 border-b pb-5 text-xs;
+  border-color: #e6e8df;
+  color: #677568;
+}
+.markdown-document {
+  @apply mt-6 text-sm leading-7;
+  overflow-wrap: anywhere;
+}
+.markdown-document :is(h1, h2, h3, h4, h5, h6) {
+  @apply mt-6 mb-3 font-semibold leading-snug;
+}
+.markdown-document h1 {
+  @apply text-2xl;
+}
+.markdown-document h2 {
+  @apply text-xl;
+}
+.markdown-document h3 {
+  @apply text-lg;
+}
+.markdown-document p {
+  @apply my-3;
+}
+.markdown-document ul {
+  @apply my-3 list-disc pl-6;
+}
+.markdown-document ol {
+  @apply my-3 list-decimal pl-6;
+}
+.markdown-document blockquote {
+  @apply my-4 border-l-4 pl-4;
+  border-color: #a4b082;
+  color: #59675b;
+}
+.markdown-document a {
+  color: #37512f;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.markdown-document code {
+  @apply rounded px-1 py-0.5 font-mono text-xs;
+  background: #eef0e4;
+}
+.markdown-document pre {
+  @apply my-4 overflow-auto rounded-md p-4;
+  background: #eef0e4;
+}
+.markdown-document pre code {
+  @apply p-0;
+}
+.markdown-document hr {
+  @apply my-5;
+  border-color: #d9ded0;
+}
+.markdown-document img {
+  @apply max-w-full;
+}
+.result-heading {
+  @apply mb-7 flex items-center justify-between;
+}
+.result-heading h2 {
+  @apply text-sm font-semibold;
+}
+.metric-value {
+  @apply mt-2 mb-7 font-mono text-5xl tracking-tight;
+  font-variant-numeric: tabular-nums;
+}
+.metric-value span {
+  @apply ml-3 font-sans text-base tracking-normal;
+  color: #6d7a6c;
+}
+.description {
+  @apply border-t pt-5;
+  border-color: #e6e8df;
+}
+.description h3 {
+  @apply text-xs font-semibold;
+}
+.description p {
+  @apply mt-2 text-sm leading-7;
+  color: #526155;
+}
+.result-meta {
+  @apply mt-6 flex flex-wrap gap-x-12 gap-y-4;
+}
+.result-meta dt {
+  @apply text-[10px] uppercase tracking-wider;
+  color: #6f7c6b;
+}
+.result-meta dd {
+  @apply mt-2 text-xs;
+  overflow-wrap: anywhere;
+}
+.diff-card {
+  @apply mt-5 rounded-lg border p-6;
+  border-color: #d9ded0;
+  background: #fffef9;
+}
+.diff-card > p:not(.eyebrow) {
+  @apply mt-4 text-sm leading-6;
+  color: #59675b;
+}
+.diff-heading {
+  @apply flex items-start justify-between gap-4;
+}
+.diff-heading h2 {
+  @apply mt-2 text-lg font-semibold;
+}
+.diff-state {
+  @apply rounded px-2 py-1 text-[10px] font-semibold uppercase tracking-wider;
+  background: #e4e8dc;
+  color: #52614e;
+}
+.diff-state-available {
+  background: #e2ead5;
+  color: #3c552e;
+}
+.diff-state-empty {
+  background: #e9e9e1;
+  color: #606456;
+}
+.diff-state-invalid,
+.diff-state-limited,
+.diff-state-failure {
+  background: #f2dfd8;
+  color: #8b3f30;
+}
+.diff-references {
+  @apply mt-5 grid gap-4 border-y py-4 sm:grid-cols-2;
+  border-color: #e6e8df;
+}
+.diff-references dt {
+  @apply text-[10px] uppercase tracking-wider;
+  color: #6f7c6b;
+}
+.diff-references dd {
+  @apply mt-1 text-xs;
+  overflow-wrap: anywhere;
+}
+.diff-message {
+  @apply rounded border px-4 py-3 text-sm leading-6;
+  border-color: #d8ddcf;
+  background: #f5f5ef;
+  color: #526155;
+}
+.diff-error {
+  border-color: #d9a797;
+  background: #fff0eb;
+  color: #7d3d31;
+}
+.unified-diff {
+  @apply mt-5 max-h-[540px] overflow-auto rounded-md border p-4 font-mono text-xs leading-5;
+  border-color: #cfd5c8;
+  background: #172321;
+  color: #e7ebe2;
+  tab-size: 2;
+  white-space: pre;
+}
+.unified-diff:focus-visible {
+  outline: 3px solid #bd722d;
+  outline-offset: 3px;
+}
+.selection-empty {
+  @apply rounded-lg border border-dashed px-7 py-12;
+  border-color: #bdc5b3;
+}
+.selection-empty > span {
+  @apply mb-4 block text-2xl;
+  color: #6d7b59;
+}
+.selection-empty h2 {
+  @apply text-lg font-medium;
+}
+.selection-empty p {
+  @apply mt-2 text-sm;
+  color: #697565;
+}
+.history-section {
+  @apply mt-10;
+}
+.history-heading {
+  @apply mb-4 flex items-center justify-between;
+}
+.history-heading h2 {
+  @apply text-base font-semibold;
+}
+.history-heading > span {
+  @apply text-xs;
+  color: #72806e;
+}
+.history-scroll {
+  @apply overflow-x-auto;
+}
+.history-scroll table {
+  @apply w-full text-left text-xs;
+  border-collapse: collapse;
+}
+.history-scroll th {
+  @apply border-b px-3 pb-3 text-[10px] font-medium uppercase tracking-wider;
+  color: #6b7869;
+  border-color: #d5daca;
+}
+.history-scroll td {
+  @apply border-b px-3 py-4 align-top leading-5;
+  border-color: #e2e5d9;
+}
+.history-scroll td:first-child button {
+  @apply rounded px-2 font-mono;
+  color: #37512f;
+}
+.history-scroll td:first-child span {
+  @apply ml-2;
+  color: #889778;
+}
+.history-scroll td:last-child {
+  min-width: 190px;
+  color: #5e6a59;
+}
+.selected-row {
+  background: #eef0e4;
+}
+.review-footer {
+  @apply mt-8 flex flex-wrap justify-between gap-2 font-mono text-[9px] leading-5;
+  color: #677562;
+  overflow-wrap: anywhere;
+}
+.pane-message {
+  @apply px-3 py-4 text-xs leading-6;
+}
+.diagnostic {
+  @apply mb-3 rounded border p-3 text-xs;
+  border-color: #d7b38d;
+  background: #fff5e8;
+  color: #795127;
+}
+.skip-link {
+  @apply fixed z-50 rounded bg-white px-4 py-3;
+  left: 12px;
+  top: -100px;
+}
+.skip-link:focus {
+  top: 12px;
+}
+.app-shell-narrow {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+.compact-bar {
+  @apply sticky top-0 z-20 flex items-center justify-between gap-3 border-b px-4 py-3;
+  border-color: #354b3f;
+  background: #1c302e;
+  color: #eef1e8;
+}
+.compact-status {
+  @apply flex min-w-0 items-center gap-2 text-xs leading-5;
+  color: #c4cfc5;
+}
+.compact-controls {
+  @apply flex shrink-0 items-center gap-2;
+}
+.compact-controls button {
+  @apply rounded-md border px-3 py-2 text-xs font-semibold;
+  border-color: #6a8174;
+  color: #eef1e8;
+  background: #243b38;
+}
+.compact-controls button[aria-expanded="true"] {
+  background: #e3e8ac;
+  border-color: #e3e8ac;
+  color: #263c35;
+}
+.compact-count {
+  @apply ml-1 rounded px-1.5 py-0.5 font-mono text-[10px];
+  background: #354b3f;
+  color: #d7e0ce;
+}
+.compact-controls button[aria-expanded="true"] .compact-count {
+  background: #cbd68f;
+  color: #34432c;
+}
+.compact-controls button:focus-visible,
+.drawer-close:focus-visible {
+  outline: 3px solid #e9c98f;
+  outline-offset: 2px;
+}
+.drawer-backdrop {
+  @apply fixed inset-0 z-30;
+  background: #0c1715b8;
+}
+.drawer-panel {
+  @apply fixed top-0 left-0 z-40 flex h-full flex-col;
+  width: min(22rem, 92vw);
+  background: #1c302e;
+  box-shadow: 0 18px 40px #0c171566;
+}
+.drawer-wins {
+  background: #f0f1e9;
+}
+.drawer-header {
+  @apply flex items-center justify-between gap-3 border-b px-4 py-3;
+  border-color: #354b3f;
+  color: #eef1e8;
+}
+.drawer-header h2 {
+  @apply text-sm font-semibold;
+}
+.drawer-close {
+  @apply rounded-md border px-3 py-2 text-xs font-semibold;
+  border-color: #6a8174;
+  color: #eef1e8;
+  background: #243b38;
+}
+.drawer-wins .drawer-header {
+  border-color: #dce0d5;
+  color: #1f302e;
+}
+.drawer-wins .drawer-close {
+  border-color: #cbd1c2;
+  color: #283a32;
+  background: #fffef8;
+}
+.drawer-content {
+  @apply flex-1 overflow-y-auto overscroll-contain;
+}
+.drawer-content .project-pane {
+  min-height: 100%;
+}
+.drawer-content .experiment-header {
+  padding-top: 20px;
+}
+.drawer-content .experiment-list {
+  max-height: none;
+}
+@media (min-width: 961px) and (max-width: 1000px) {
+  .app-shell {
+    grid-template-columns: 185px 235px minmax(0, 1fr);
+  }
+  .review-content {
+    padding: 28px 24px;
+  }
+  .review-header {
+    padding: 22px 24px;
+  }
+  .metric-value {
+    font-size: 40px;
+  }
+}
+@media (max-width: 960px) {
+  .review-content {
+    padding: 26px 20px;
+  }
+  .session-title h1 {
+    font-size: 24px;
+  }
+  .review-header {
+    padding: 20px;
+  }
+  .result-card {
+    padding: 20px;
+  }
+  .segment-summary {
+    padding: 16px;
+  }
+}
+@media (max-width: 560px) {
+  .compact-bar {
+    flex-wrap: wrap;
+  }
+  .review-header {
+    @apply flex-wrap gap-1;
+    padding: 16px 14px;
+  }
+  .review-content {
+    padding: 20px 14px;
+  }
+  .segment-summary > label {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .segment-summary select {
+    width: 100%;
+  }
+  .metric-value {
+    font-size: 34px;
+  }
+  .result-card,
+  .document-card,
+  .diff-card,
+  .chart-card {
+    padding: 16px;
+  }
+}
+
+.diff-controls {
+  @apply mt-5 flex flex-wrap items-end gap-4;
+}
+.diff-controls label {
+  @apply flex flex-col gap-2 text-xs font-medium;
+  color: #526155;
+}
+.diff-controls select {
+  @apply rounded border px-3 py-2 text-sm;
+  border-color: #cbd2c4;
+  background: #fffef9;
+  color: #20332d;
+}
+.diff-controls .artifact-control {
+  @apply flex-row items-center self-center;
+}
+.diff-controls input {
+  accent-color: #44634c;
+}
+.diff-controls select:focus-visible,
+.diff-controls input:focus-visible,
+.split-diff:focus-visible {
+  outline: 3px solid #bd722d;
+  outline-offset: 3px;
+}
+.diff-semantics {
+  @apply mt-3 text-xs leading-5;
+  color: #667466;
+}
+.changed-files {
+  @apply my-5 grid max-h-64 gap-1 overflow-auto;
+}
+.changed-files button {
+  @apply flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded border px-3 py-2 text-xs;
+  border-color: #d9ded0;
+  overflow-wrap: anywhere;
+}
+.changed-files button[aria-pressed="true"] {
+  background: #e6eddc;
+  border-color: #93a483;
+}
+.changed-files button > span:last-child {
+  color: #62715b;
+}
+.diff-state-binary {
+  background: #e8e1f0;
+  color: #655078;
+}
+.split-file {
+  @apply mt-5;
+}
+.split-file h3 {
+  @apply mb-2 text-xs font-medium;
+  overflow-wrap: anywhere;
+}
+.split-diff {
+  @apply max-h-[540px] overflow-auto rounded border text-xs;
+  border-color: #cfd5c8;
+  --diff-font-family: var(--font-mono);
+  --diff-text-color: #20332d;
+}
+.split-labels {
+  @apply grid grid-cols-2 border-b py-2 font-semibold;
+  border-color: #cfd5c8;
+  background: #edf0e7;
+}
+.split-labels span {
+  @apply px-3;
+}
+.split-diff .diff-decoration {
+  background: #edf0e7;
+  color: #62715b;
+}
+.split-diff .diff {
+  min-width: 540px;
+}

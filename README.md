@@ -22,17 +22,37 @@ application with a deliberate performance ceiling, a low-noise metric, a correct
 gate, and instrumentation that makes its bottleneck observable. See
 [`demo-projects/README.md`](./demo-projects/README.md) for the shared contract.
 
-| Demo | Objective metric (lower is better) | Prerequisite |
-| --- | --- | --- |
-| [`demo-projects/svg-chart`](./demo-projects/svg-chart) | `ms` | none — plain Node, zero dependencies |
-| [`demo-projects/slow-api`](./demo-projects/slow-api) | `scenario_ms` | none — uses the built-in `node:sqlite` module |
-| [`demo-projects/bundle-diet`](./demo-projects/bundle-diet) | `critical_gzip_kb` | Chromium for the boot oracle: `pnpm exec playwright install chromium` |
-| [`demo-projects/datagrid-perf`](./demo-projects/datagrid-perf) | `render_ms` | none — jsdom and Vitest install with the workspace |
-| [`demo-projects/canvas-particles`](./demo-projects/canvas-particles) | `total_ms` | none — `@napi-rs/canvas` installs a prebuilt binary |
+| Demo                                                                 | Objective metric (lower is better) | Prerequisite                                                          |
+| -------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------- |
+| [`demo-projects/svg-chart`](./demo-projects/svg-chart)               | `ms`                               | none — plain Node, zero dependencies                                  |
+| [`demo-projects/slow-api`](./demo-projects/slow-api)                 | `scenario_ms`                      | none — uses the built-in `node:sqlite` module                         |
+| [`demo-projects/bundle-diet`](./demo-projects/bundle-diet)           | `critical_gzip_kb`                 | Chromium for the boot oracle: `pnpm exec playwright install chromium` |
+| [`demo-projects/datagrid-perf`](./demo-projects/datagrid-perf)       | `render_ms`                        | none — jsdom and Vitest install with the workspace                    |
+| [`demo-projects/canvas-particles`](./demo-projects/canvas-particles) | `total_ms`                         | none — `@napi-rs/canvas` installs a prebuilt binary                   |
 
 Install the workspace once from the repository root (`pnpm install`). Each demo then
 provides `test`, `bench` and `verify` scripts; `pnpm --filter <demo> verify` is the
 pre-flight check.
+
+## Reviewing sessions with the visualizer
+
+`apps/visualizer` provides a local browser UI for reviewing autoresearch sessions
+found under configured roots. It reads `.auto/log.jsonl`, `ideas.md`, and
+`prompt.md`, derives segment-aware wins, and loads project-scoped Git diffs on
+demand without modifying the source projects.
+
+```sh
+pnpm install
+pnpm dev:visualizer    # API on http://127.0.0.1:4310, Vite UI on http://127.0.0.1:5173
+pnpm build:visualizer
+pnpm start:visualizer  # built UI and API on http://127.0.0.1:4310
+```
+
+The checked-in example config (`apps/visualizer-api/config.example.json`) points at
+`demo-projects/checksum`. See [`apps/visualizer/README.md`](./apps/visualizer/README.md)
+for the full configuration and behavior reference, including metric segments,
+improvement semantics, source and diff limits, refresh monitoring, and availability
+states.
 
 ## Requirements
 
@@ -108,12 +128,12 @@ OpenRouter, at the time of this writing, has around 16 free models to choose fro
 
 For the sake of this workshop, I recommend looking at the following models:
 
+- nvidia/nemotron-3.5-lightning:free
+- cohere/north-mini-code:free
 - apodex/apodex-1.1-mini:free
 - dots-studio/dots-3-note-preview:free
-- nvidia/nemotron-3.5-lightning:free
 - thinkingmachines/inkling-small:free
 - poolside/laguna-xs-2.1:free
-- cohere/north-mini-code:free
 - google/gemma-4-26b-a4b-it:free
 
 ![Comparison of some of the free models vs the frontier](./_images/artificial-analysis.png)

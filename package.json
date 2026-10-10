@@ -1,8 +1,30 @@
 {
   "name": "autoresearch-workshop",
   "private": true,
-  "scripts": {},
+  "scripts": {
+    "dev:visualizer": "pnpm --filter visualizar-common build && turbo run dev --filter=visualizer --filter=visualizer-api --filter=visualizar-common --ui=stream",
+    "build:visualizer": "turbo run build --filter=visualizer --filter=visualizer-api",
+    "start:visualizer": "pnpm --filter visualizer-api start",
+    "check:visualizer": "turbo run check-types --filter=visualizer --filter=visualizer-api --filter=visualizar-common && pnpm test:visualizer && pnpm format:visualizer",
+    "test:visualizer": "pnpm --filter visualizar-common build && pnpm --filter visualizer-api test",
+    "format:visualizer": "prettier --check --ignore-path .gitignore apps/visualizer apps/visualizer-api packages/visualizar-common scripts/visualizer-*.mjs",
+    "fixture:visualizer": "node scripts/visualizer-fixture.mjs",
+    "smoke:visualizer": "node scripts/visualizer-smoke.mjs",
+    "smoke:visualizer:wins": "node scripts/visualizer-smoke.mjs",
+    "smoke:visualizer:segments": "node scripts/visualizer-smoke.mjs dev segments",
+    "smoke:visualizer:discovery": "node scripts/visualizer-discovery-smoke.mjs",
+    "smoke:visualizer:diff": "node scripts/visualizer-diff-smoke.mjs",
+    "smoke:visualizer:sources": "node scripts/visualizer-source-smoke.mjs",
+    "smoke:visualizer:documents": "node scripts/visualizer-document-smoke.mjs",
+    "smoke:visualizer:chart": "node scripts/visualizer-chart-smoke.mjs",
+    "smoke:visualizer:comparisons": "node scripts/visualizer-comparison-smoke.mjs",
+    "smoke:visualizer:live": "node scripts/visualizer-live-smoke.mjs",
+    "smoke:visualizer:recovery": "node scripts/visualizer-recovery-smoke.mjs",
+    "smoke:visualizer:accessibility": "node scripts/visualizer-accessibility-smoke.mjs",
+    "smoke:visualizer:s12": "node scripts/visualizer-s12-smoke.mjs"
+  },
   "devDependencies": {
+    "playwright": "1.62.0",
     "prettier": "3.9.6",
     "turbo": "^2.11.7",
     "typescript": "7.0.2"

@@ -1,0 +1,5 @@
+{
+  "roots": [{ "path": "../../demo-projects/checksum", "recursive": false }],
+  "watch": true,
+  "rescanIntervalMs": 5000
+}

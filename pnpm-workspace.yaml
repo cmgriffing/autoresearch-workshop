@@ -1,5 +1,6 @@
 packages:
   - "apps/*"
+  - "packages/*"
   - "demo-projects/*"
 minimumReleaseAgeExclude:
-  - '@vitejs/plugin-react@6.1.2'
+  - "@vitejs/plugin-react@6.1.2"
