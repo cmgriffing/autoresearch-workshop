@@ -25,6 +25,11 @@ harness supplies everything measured: datasets, row counts, viewport sizes, iter
 counts, frame counts, interaction scripts and seeds. Application defaults are never the
 measured workload.
 
+A demo that measures a real browser substitutes its framework's layout for `src/`: the
+application directory the framework serves (`app/`, `public/`, framework config files)
+is the writable set. The same rule applies — if it is not in that layout, an optimization
+run must not modify it. `nextjs-core-web-vitals` is the reference example.
+
 If it is not under `src/`, an optimization run must not modify it.
 
 ## Measurement protocol
@@ -79,8 +84,29 @@ directory. It runs the correctness suite, runs the benchmark, and reports observ
 only: test status per case plus the metric lines. It never prints expected results,
 optimization suggestions or expected magnitudes.
 
+## Browser demos (heavy tier)
+
+When the metric is produced by a real browser, the workload includes the browser's own
+work — process startup, page loads under a shaping profile, and a correctness pass — and
+the ≤ 3 s baseline rule cannot hold. Browser demos are the **heavy tier**: the full
+benchmark (state reset, build, verify pass, warm-up load and the measured loads)
+completes within **25 seconds** on the workshop reference machine, and `verify.js` prints
+per-step timings so a slow machine is diagnosed at setup rather than mid-session.
+
+Heavy-tier rules:
+
+- The harness owns the measurement profile (CPU throttle, network emulation, viewport)
+  and applies it before navigation; a fresh browser context is used for every load.
+- Generated state lives under `.cache/` as usual. The harness resets the caches it owns
+  per invocation and never touches the machine-local oracle baseline.
+- Baselines and screenshots are captured by `pnpm setup` on the measuring machine,
+  stored under `.cache/oracle/`, keyed by fixture digests, viewport and browser major
+  version. They are never committed and are recaptured when the key changes.
+- `pnpm setup` requires a pristine demo (content manifest) and runs one full benchmark
+  pass; it prints the baseline metric, so the ceiling is known before a session starts.
+
 ## Budget
 
-A baseline benchmark completes within three seconds on the workshop reference machine.
-Sizing is part of each project's design and is checked by `verify`; the workload is not a
-session tuning knob.
+A baseline benchmark completes within three seconds on the workshop reference machine —
+except for browser demos, which use the heavy-tier budget above. Sizing is part of each
+project's design and is checked by `verify`; the workload is not a session tuning knob.

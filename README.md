@@ -29,6 +29,7 @@ gate, and instrumentation that makes its bottleneck observable. See
 | [`demo-projects/bundle-diet`](./demo-projects/bundle-diet)           | `critical_gzip_kb`                 | Chromium for the boot oracle: `pnpm exec playwright install chromium` |
 | [`demo-projects/datagrid-perf`](./demo-projects/datagrid-perf)       | `render_ms`                        | none — jsdom and Vitest install with the workspace                    |
 | [`demo-projects/canvas-particles`](./demo-projects/canvas-particles) | `total_ms`                         | none — `@napi-rs/canvas` installs a prebuilt binary                   |
+| [`demo-projects/nextjs-core-web-vitals`](./demo-projects/nextjs-core-web-vitals) | `cwv_budget`       | Chromium (same as `bundle-diet`); run `pnpm setup` once per machine    |
 
 Install the workspace once from the repository root (`pnpm install`). Each demo then
 provides `test`, `bench` and `verify` scripts; `pnpm --filter <demo> verify` is the

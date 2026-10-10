@@ -1,0 +1,24 @@
+{
+  "name": "nextjs-core-web-vitals",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Next.js App Router storefront measured on lab Core Web Vitals under a fixed browser profile",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "bench": "node bench/run.js",
+    "setup": "node bench/setup.js",
+    "verify": "node verify.js",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "playwright": "1.62.0"
+  }
+}
