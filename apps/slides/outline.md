@@ -1,0 +1,34 @@
+- kick off first autoresearch task
+- intro
+  - Brief what is autoresearch "Who has parts of their application or side project they would love to optimize for performance?"
+    - But features and fixes tend to take priority
+  - slide with QR code for repo url (maybe create a layout that has the QR code showing the whole time)
+- requirements
+  - pi
+  - pi-autoresearch
+  - openrouter account (free)
+  - local models as a fallback
+- check on first task
+- What is autoresearch
+  - Karpathy's
+  - pi-autoresearch
+  - other autoresearch projects/plugins
+  - oh my codex performance-goal
+- Use cases
+  - anything you can measure/benchmark
+  - examples in the repo
+  - model choices
+    - frontier models not needed
+  - give people time to kick things off
+- Pitfalls
+  - diminishing returns
+    - not everything can be optimized further
+  - pi-autoresearch will run forever
+    - the other autoresearch has limits you can give it
+- My experiences with autoresearch
+  - Messijo/turbostream
+  - Messijo firehose listener
+    - compiled regex caching: persistent_term
+- Checking in on first task
+- Visualizer demo
+- Recap
