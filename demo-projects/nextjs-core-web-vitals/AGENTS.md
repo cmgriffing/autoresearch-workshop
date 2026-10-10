@@ -23,9 +23,11 @@ rules in `../README.md`.
 - The build runs as `next build` + `next start` through the harness; the page
   is dynamic (`force-dynamic`). Run `pnpm build` yourself only for a quick
   compile check — it writes to `.cache/next`.
-- `PIM_URL` is injected by the benchmark at run time. `pnpm dev` needs it too;
-  for UI work, run the bench once and use its origins, or expect the page to
-  throw without it.
+- `PIM_URL` points at the bench-owned origins (PIM API, image CDN, fonts).
+  The benchmark injects it at run time; `pnpm dev` boots the origins and the
+  dev server together and wires it up, so the storefront opens in a browser
+  without the harness. `pnpm dev:next` is the raw server and needs `PIM_URL`
+  from elsewhere.
 
 ## The fence
 
@@ -50,3 +52,13 @@ rules in `../README.md`.
 - `./.auto/measure.sh` runs the benchmark (oracle-gated, exit non-zero on any
   oracle failure). `./.auto/checks.sh` runs the correctness suite. A `keep`
   requires both to pass.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

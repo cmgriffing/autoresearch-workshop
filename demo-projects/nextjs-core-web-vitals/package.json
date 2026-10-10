@@ -9,7 +9,8 @@
     "bench": "node bench/run.js",
     "setup": "node bench/setup.js",
     "verify": "node verify.js",
-    "dev": "next dev",
+    "dev": "node bench/dev.js",
+    "dev:next": "next dev",
     "build": "next build",
     "start": "next start"
   },

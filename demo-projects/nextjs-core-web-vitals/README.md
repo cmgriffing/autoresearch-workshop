@@ -44,12 +44,24 @@ From this directory (or `pnpm --filter nextjs-core-web-vitals <script>`):
 pnpm run setup # once per machine: clean-state check, baseline capture, one bench pass
 pnpm verify    # pre-flight check: correctness suite, then the benchmark
 pnpm bench     # the benchmark alone (oracle-gated)
+pnpm dev       # demo/UI: boots the fixture origins + the dev server
 ```
 
-`pnpm dev` runs the raw Next.js dev server but needs the bench-owned origins;
-it is for UI work only, not measurement. `pnpm setup` is a pnpm built-in command,
-so the setup script is invoked as `pnpm run setup` (or
-`pnpm --filter nextjs-core-web-vitals run setup`).
+`pnpm dev` is the way to open the storefront in a browser: it starts the
+bench-owned origins (PIM API, image CDN, fonts) and the Next.js dev server
+together, wires up `PIM_URL`, and prints the seed URLs:
+
+```
+http://localhost:3000/?seed=storefront-timed-1
+http://localhost:3000/?seed=storefront-verify-1
+```
+
+Use `pnpm run dev -- --port 3100` for another port, or `pnpm dev:next` for a
+raw dev server (that one needs `PIM_URL` pointing at origins you started
+yourself). Dev mode is for demos and UI work only, never for measurement.
+
+`pnpm setup` is a pnpm built-in command, so the setup script is invoked as
+`pnpm run setup` (or `pnpm --filter nextjs-core-web-vitals run setup`).
 
 **Prerequisite:** Chromium for Playwright. It is the same browser the other
 browser demo uses:
