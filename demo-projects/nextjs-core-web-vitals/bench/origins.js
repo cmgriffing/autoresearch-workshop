@@ -62,20 +62,22 @@ function serveImage(res, namespace, asset, searchParams) {
   // Accept either the raw seed or the fixture-directory slug as the namespace.
   const seed =
     SEEDS.find((s) => s === namespace) ?? SEEDS.find((s) => SEED_SLUGS[s] === namespace);
-  if (!seed) {
-    sendJson(res, 404, { error: `unknown image namespace: ${namespace}` });
-    return;
-  }
-  if (!assetsForSeed(seed).includes(asset)) {
+
+  // Fixtures are baked for the declared seeds only. Any other namespace — the
+  // demo opened without ?seed=, or a typo — falls back to the first seed's
+  // baked set: the PIM side already synthesises a dataset for any seed string,
+  // and 404ing the imagery would make those pages look broken.
+  const fixtureSeed = seed ?? SEEDS[0];
+  if (!assetsForSeed(fixtureSeed).includes(asset)) {
     sendJson(res, 404, { error: `unknown asset: ${asset}` });
     return;
   }
 
-  const tiers = widthTiers(assetSize(seed, asset).width);
+  const tiers = widthTiers(assetSize(fixtureSeed, asset).width);
   const requestedWidth = Number.parseInt(searchParams.get('w') ?? '', 10);
   const width = pickWidth(tiers, Number.isNaN(requestedWidth) ? null : requestedWidth);
   const fmt = searchParams.get('fmt') === 'webp' ? 'webp' : 'jpeg';
-  const slug = SEED_SLUGS[seed];
+  const slug = SEED_SLUGS[fixtureSeed];
   const file = fixturePath(slug, asset, width, FORMAT_EXT[fmt]);
   if (!fs.existsSync(file)) {
     sendJson(res, 404, { error: `fixture not baked: ${slug}/${asset}-${width}.${FORMAT_EXT[fmt]}` });

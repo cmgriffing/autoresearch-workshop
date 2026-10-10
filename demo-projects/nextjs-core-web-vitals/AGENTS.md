@@ -45,7 +45,9 @@ rules in `../README.md`.
   exactly one element per hook; keep review rows tagged with `data-review-id`.
 - All product, promo, review, variant and image data comes from the bench-owned
   origins via `PIM_URL`, addressed by `/?seed=<seed>`. No dataset values in
-  source.
+  source. The root redirect and the unknown-seed fixture fallback are demo
+  conveniences in `next.config.mjs` / `bench/origins.js`; measurement and
+  verification always use seeded URLs.
 - The benchmark measures the **timed** seed and verifies content, geometry,
   interactions, the hero's perceptual grid and the font on the **verify** seed.
   Optimizing only for the timed seed fails verification.

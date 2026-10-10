@@ -110,7 +110,9 @@ The benchmark fails the run when the hero paint is missing or zero.
 **Data contract**: all product, promo, review, variant and image data comes
 from the bench-owned origins through `PIM_URL`; no dataset value may be
 embedded in source. The page is addressed as `/?seed=<seed>` and the
-benchmark supplies two seeds.
+benchmark supplies two seeds. Opening `/` without a seed redirects to the
+demo's default seed, and any other seed string renders a synthesised dataset
+with the baked fixture imagery — so a demo URL is never left without images.
 
 ## Rules
 

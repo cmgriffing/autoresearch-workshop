@@ -80,9 +80,11 @@ export async function buildApp({ root, env, timeoutMs }) {
   return { ms: Math.round(performance.now() - started) };
 }
 
+import { spawnTree, stopTree } from './process.js';
+
 export async function startApp({ root, env, port, timeoutMs = 30000 }) {
   const started = performance.now();
-  const child = spawn(process.execPath, [NEXT_BIN, 'start', '-p', String(port)], {
+  const child = spawnTree(process.execPath, [NEXT_BIN, 'start', '-p', String(port)], {
     cwd: root,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -115,25 +117,11 @@ export async function startApp({ root, env, port, timeoutMs = 30000 }) {
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
   if (!ready) {
-    child.kill('SIGKILL');
+    await stopTree(child, { timeoutMs: 1000 });
     throw new Error(`next start did not become ready within ${timeoutMs}ms\n${output}`);
   }
 
-  const stop = () =>
-    new Promise((resolve) => {
-      if (child.exitCode !== null) {
-        resolve();
-        return;
-      }
-      const force = setTimeout(() => {
-        child.kill('SIGKILL');
-      }, 3000);
-      child.once('exit', () => {
-        clearTimeout(force);
-        resolve();
-      });
-      child.kill('SIGTERM');
-    });
+  const stop = () => stopTree(child);
 
   return { url, ms: Math.round(performance.now() - started), stop, child };
 }

@@ -10,6 +10,19 @@ const nextConfig = {
       { protocol: 'http', hostname: 'localhost' },
     ],
   },
+  // Demo convenience: opening the app without a dataset seed lands on the
+  // timed seed instead of a seedless page. The benchmark always supplies a
+  // seed explicitly, and sessions measure seeded URLs only.
+  async redirects() {
+    return [
+      {
+        source: '/',
+        missing: [{ type: 'query', key: 'seed' }],
+        destination: '/?seed=storefront-timed-1',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

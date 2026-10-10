@@ -13,12 +13,12 @@
  * ephemeral port per run and measures a production build.
  */
 
-import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SEEDS } from './dataset.js';
 import { startOrigins } from './origins.js';
+import { spawnTree, stopTree } from './process.js';
 
 const require = createRequire(import.meta.url);
 const NEXT_BIN = require.resolve('next/dist/bin/next');
@@ -31,7 +31,7 @@ const appArgs = ['dev'];
 if (port) appArgs.push('-p', String(port));
 
 const origins = await startOrigins();
-const app = spawn(process.execPath, [NEXT_BIN, ...appArgs], {
+const app = spawnTree(process.execPath, [NEXT_BIN, ...appArgs], {
   cwd: ROOT,
   env: { ...process.env, PIM_URL: origins.url },
   stdio: 'inherit',
@@ -53,7 +53,7 @@ let stopping = false;
 const shutdown = async (code) => {
   if (stopping) return;
   stopping = true;
-  if (app.exitCode === null) app.kill('SIGTERM');
+  await stopTree(app); // next dev forks next-server; stop the whole group
   await origins.close().catch(() => {});
   process.exit(code);
 };
