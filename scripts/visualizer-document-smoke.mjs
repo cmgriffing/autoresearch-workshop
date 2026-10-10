@@ -47,6 +47,17 @@ async function waitReady(url) {
   }
   throw new Error(children.map((entry) => entry.output()).join("\n"));
 }
+async function selectProject(page, name) {
+  const selector = page.getByRole("combobox", { name: /^Project/ });
+  await selector.click();
+  await page
+    .getByRole("option", {
+      name,
+      ...(typeof name === "string" ? { exact: true } : {}),
+    })
+    .first()
+    .click();
+}
 let browser;
 let before = await fingerprintDiscoveryFixture(fixture.directory);
 const assertReadOnly = async () =>
@@ -118,9 +129,8 @@ try {
   await page
     .getByRole("heading", { name: "Alpha session", exact: true })
     .waitFor();
-  const baseline = page.getByRole("button", {
-    name: "Baseline experiment 1",
-    exact: true,
+  const baseline = page.getByTestId("attempt-list").getByRole("button", {
+    name: /^Select experiment 1 from the attempt list/,
   });
   await baseline.click();
   await page
@@ -153,7 +163,7 @@ try {
     ),
     "solid",
   );
-  await notes.getByText(/CURRENT PROJECT DOCUMENT · shared/).waitFor();
+  await notes.getByText(/Current ideas for shared/).waitFor();
   await notes.getByText(/files on disk at the latest refresh/).waitFor();
   assert.equal(await notes.locator("strong").textContent(), "vectorization");
   assert.equal(await notes.getByRole("listitem").count(), 2);
@@ -294,9 +304,7 @@ try {
   await page
     .getByText(/Stale data: showing the last successfully read project data/)
     .waitFor();
-  await page
-    .getByRole("button", { name: `shared · . · ${fixture.beta}`, exact: true })
-    .click();
+  await selectProject(page, `shared · . · ${fixture.beta}`);
   await notes
     .getByText("This session has no ideas.md available.", { exact: true })
     .waitFor();
@@ -311,13 +319,11 @@ try {
     })
     .waitFor();
   await reviewButton.click();
-  assert.equal(await page.getByRole("table").locator("tbody tr").count(), 2);
-  await page
-    .getByRole("button", {
-      name: `uninitialized · . · ${fixture.uninitialized}`,
-      exact: true,
-    })
-    .click();
+  assert.equal(
+    await page.getByTestId("attempt-list").locator(".attempt-entry").count(),
+    2,
+  );
+  await selectProject(page, `uninitialized · . · ${fixture.uninitialized}`);
   await page.getByText(/Uninitialized session\. No log/).waitFor();
   await ideasButton.click();
   await notes

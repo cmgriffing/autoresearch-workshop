@@ -68,6 +68,20 @@ async function waitReady(url) {
     `Server did not become ready: ${children.map((value) => value.output()).join("\n")}`,
   );
 }
+async function setThreshold(page, prefix, limit = 40) {
+  const slider = page.getByRole("slider", {
+    name: "Minimum win improvement percentage",
+  });
+  await slider.focus();
+  await page.keyboard.press("Home");
+  for (let step = 0; step <= limit; step += 1) {
+    const text = await page.getByTestId("threshold-readout").innerText();
+    if (text.startsWith(prefix)) return;
+    await page.keyboard.press("ArrowRight");
+  }
+  throw new Error(`Threshold never reached ${prefix}`);
+}
+
 let browser;
 try {
   const entry = join(
@@ -144,10 +158,10 @@ try {
       apiRequests.push(request.url());
   });
   await page.goto(uiOrigin);
-  const projectButton = page.getByRole("button", { name: /checksum-session/ });
-  await projectButton.waitFor();
-  await projectButton.focus();
-  await page.keyboard.press("Enter");
+  const projectSelector = page.getByRole("combobox", { name: /^Project/ });
+  await projectSelector.waitFor();
+  await projectSelector.click();
+  await page.getByRole("option", { name: /checksum-session/ }).click();
   if (fixtureKind === "segments") {
     const segmentSelect = page.getByRole("combobox", {
       name: "Metric segment",
@@ -155,21 +169,23 @@ try {
     await segmentSelect.waitFor();
     assert.equal(await segmentSelect.inputValue(), snapshot.segments[0].id);
     await segmentSelect.selectOption(snapshot.segments[1].id);
-    await page.getByText("Higher is better", { exact: true }).waitFor();
+    await page.getByText(/Higher is better/).waitFor();
+    const attemptList = page.getByTestId("attempt-list");
     assert.equal(
-      await page
-        .getByRole("complementary", { name: "Wins" })
-        .getByRole("button", { name: /Win experiment/ })
-        .count(),
+      await attemptList.getByRole("button", { name: /New best/ }).count(),
       1,
     );
-    const threshold = page.getByRole("spinbutton", {
-      name: "Minimum win improvement percentage",
-    });
-    assert.equal(await threshold.inputValue(), "1");
-    await threshold.fill("0");
+    assert.match(
+      await page.getByTestId("threshold-readout").innerText(),
+      /^1\.0% · 1 of 2 wins · 3 of 4 attempts$/,
+    );
+    await setThreshold(page, "0%");
+    assert.match(
+      await page.getByTestId("threshold-readout").innerText(),
+      /^0% · 2 of 2 wins · 4 of 4 attempts$/,
+    );
     const zeroReference = page.getByRole("button", {
-      name: /Win experiment 6: Percentage unavailable; absolute improvement 5/,
+      name: /^Select experiment 6 from the attempt list/,
     });
     await zeroReference.click();
     await page
@@ -183,9 +199,7 @@ try {
       "5pts",
     );
     await segmentSelect.selectOption(snapshot.segments[2].id);
-    await page
-      .getByText("No post-baseline wins are recorded in this segment.")
-      .waitFor();
+    await page.getByText("No valid experiments in this segment.").waitFor();
     assert.equal(await page.getByRole("table").count(), 0);
     assert.deepEqual(errors, []);
     console.log(
@@ -194,8 +208,9 @@ try {
   } else {
     assert.equal(snapshot.runs[1].metric, 4.569);
     assert.equal(snapshot.segments[0].wins.length, 7);
-    const experiment = page.getByRole("button", {
-      name: /Win experiment 2:/,
+    const attemptList = page.getByTestId("attempt-list");
+    const experiment = attemptList.getByRole("button", {
+      name: /^Select experiment 2 from the attempt list/,
     });
     await experiment.waitFor();
     await experiment.focus();
@@ -217,35 +232,29 @@ try {
       /unroll/i,
     );
     assert.equal(await experiment.getAttribute("aria-pressed"), "true");
-    const threshold = page.getByRole("spinbutton", {
-      name: "Minimum win improvement percentage",
+    await setThreshold(page, "0%");
+    const winSeven = attemptList.getByRole("button", {
+      name: /^Select experiment 7 from the attempt list/,
     });
-    await threshold.fill("1");
-    assert.equal(
-      await page
-        .getByRole("complementary", { name: "Wins" })
-        .getByRole("button", { name: /Win experiment/ })
-        .count(),
-      3,
-    );
-    assert.equal(
-      await page.getByRole("button", { name: /Win experiment 7:/ }).count(),
-      0,
-    );
-    const filteredHistoryButton = page.getByRole("button", {
-      name: "Select experiment 7 from history",
-      exact: true,
-    });
-    await filteredHistoryButton.click();
+    await winSeven.click();
     await page
       .getByRole("heading", { name: "Experiment 07", exact: true })
       .waitFor();
+    await setThreshold(page, "1.0%");
+    assert.equal(
+      await attemptList.getByRole("button", { name: /New best/ }).count(),
+      3,
+    );
+    assert.equal(await winSeven.count(), 0);
     await page
-      .getByText("Selected win remains open outside the current filter.")
+      .getByText("Selected experiment remains open outside the current filter.")
       .waitFor();
-    const historyButton = page.getByRole("button", {
-      name: "Select experiment 3 from history",
-      exact: true,
+    assert.match(
+      await page.getByTestId("threshold-readout").innerText(),
+      /^1\.0% · 3 of 7 wins · 19 of 23 attempts$/,
+    );
+    const historyButton = attemptList.getByRole("button", {
+      name: /^Select experiment 3 from the attempt list/,
     });
     await historyButton.focus();
     await page.keyboard.press("Space");
@@ -253,7 +262,6 @@ try {
       .getByRole("heading", { name: "Experiment 03", exact: true })
       .waitFor();
     assert.equal(await historyButton.getAttribute("aria-pressed"), "true");
-    assert.equal(await page.getByRole("table").locator("tbody tr").count(), 23);
     assert.equal(
       await historyButton.evaluate((element) =>
         element.matches(":focus-visible"),
@@ -262,7 +270,7 @@ try {
     );
     assert.deepEqual(errors, []);
     console.log(
-      `S03 ${mode} checksum smoke passed: 23 real runs; baseline plus 7 wins; 1% filter shows runs 2/4/8; outside-filter and history selection remain readable; typed APIs; unchanged fixture and demo log; zero browser errors.`,
+      `S03 ${mode} checksum smoke passed: 23 real runs; baseline plus 7 wins; 1% filter shows runs 2/4/8; outside-filter and attempt-list selection remain readable; typed APIs; unchanged fixture and demo log; zero browser errors.`,
     );
   }
   assert.ok(apiRequests.length >= 2);

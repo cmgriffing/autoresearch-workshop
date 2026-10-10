@@ -48,6 +48,17 @@ async function waitReady(url) {
   throw new Error(children.map((value) => value.output()).join("\n"));
 }
 
+async function selectProject(page, name) {
+  const selector = page.getByRole("combobox", { name: /^Project/ });
+  await selector.click();
+  await page
+    .getByRole("option", {
+      name,
+      ...(typeof name === "string" ? { exact: true } : {}),
+    })
+    .first()
+    .click();
+}
 let browser;
 try {
   const entry = join(
@@ -110,15 +121,13 @@ try {
     if (request.url().includes("/diff?")) requests.push(request.url());
   });
   await page.goto(uiOrigin);
-  const projectButton = (path) =>
-    page.getByRole("button", { name: `project · . · ${path}`, exact: true });
-  await projectButton(fixture.projectPath).click();
+  await selectProject(page, `project · . · ${fixture.projectPath}`);
   const select = async (n) =>
     page
       .getByRole("button", {
-        name: `Select experiment ${n} from history`,
-        exact: true,
+        name: new RegExp(`^Select experiment ${n} from the attempt list`),
       })
+      .first()
       .click();
   const region = page.getByRole("region", {
     name: "Historical diff",
@@ -134,9 +143,7 @@ try {
   const navigation = region.getByRole("navigation", { name: "Changed files" });
   const patch = region.locator(".unified-diff");
   const metric = page.getByTestId("selected-metric");
-  await page
-    .getByRole("button", { name: "Baseline experiment 1", exact: true })
-    .click();
+  await page.getByRole("button", { name: /First kept baseline/ }).click();
   await region.getByText(/Empty tree/).waitFor();
   assert.match(await patch.innerText(), /project\/code.ts/);
   await select(3);
@@ -150,6 +157,34 @@ try {
     .getByRole("heading", { name: "Baseline diff", exact: true })
     .waitFor();
   await patch.waitFor();
+  for (const width of [1280, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    await patch.waitFor();
+    await page.waitForFunction(() => {
+      const pane = document.querySelector(".review-pane");
+      const chart = document.querySelector(".recharts-wrapper");
+      if (!pane || !chart) return true;
+      return (
+        chart.getBoundingClientRect().right <=
+        pane.getBoundingClientRect().right + 1
+      );
+    });
+    const patchOverflow = await patch.evaluate(
+      (element) => element.scrollWidth - element.clientWidth,
+    );
+    assert.ok(
+      patchOverflow <= 1,
+      `unified patch scrolls horizontally at ${width}px by ${patchOverflow}px`,
+    );
+    const paneOverflow = await page
+      .locator(".review-pane")
+      .evaluate((element) => element.scrollWidth - element.clientWidth);
+    assert.ok(
+      paneOverflow <= 1,
+      `review pane scrolls horizontally at ${width}px by ${paneOverflow}px`,
+    );
+  }
+  await page.setViewportSize({ width: 1440, height: 1050 });
   assert.match(await patch.innerText(), /-export const value = 1/);
   assert.match(await patch.innerText(), /\+export const value = 2/);
   assert.equal(await metric.innerText(), "8ms");
@@ -303,7 +338,7 @@ try {
     assert.equal(await metric.innerText(), n === 401 ? "100ms" : "99ms");
     assert.equal(await patch.count(), 0);
   }
-  await projectButton(join(fixture.linked, "project")).click();
+  await selectProject(page, `project · . · ${join(fixture.linked, "project")}`);
   await select(6);
   await region.getByText(/Git worktree resolved through a .git file/).waitFor();
   await comparison.selectOption("parent");
@@ -311,7 +346,7 @@ try {
   assert.match(await patch.innerText(), /merged feature/);
 
   // Hold a fully fetched old comparison while controls/project selection change.
-  await projectButton(fixture.projectPath).click();
+  await selectProject(page, `project · . · ${fixture.projectPath}`);
   let held = false;
   let release;
   const gate = new Promise((resolve) => {
@@ -374,12 +409,7 @@ try {
   while (!fetched && Date.now() < fetchDeadline)
     await new Promise((resolve) => setTimeout(resolve, 20));
   assert.ok(fetched);
-  await page
-    .getByRole("button", {
-      name: `sibling · . · ${join(fixture.repo, "sibling")}`,
-      exact: true,
-    })
-    .click();
+  await selectProject(page, `sibling · . · ${join(fixture.repo, "sibling")}`);
   await select(2);
   await patch.waitFor();
   releaseProject();
@@ -391,7 +421,7 @@ try {
   assert.deepEqual(await hashFiles(fixture.repo), filesBefore);
   assert.deepEqual(await hashFiles(fixture.linked), linkedBefore);
   // A note-only revision rejects the old request and refresh keeps source selection.
-  await projectButton(fixture.projectPath).click();
+  await selectProject(page, `project · . · ${fixture.projectPath}`);
   await select(2);
   await patch.waitFor();
   await writeFile(
@@ -410,7 +440,8 @@ try {
   assert.equal(await metric.innerText(), "9ms");
   assert.equal((await fetch(diffUrl(2, "&comparison=baseline"))).status, 409);
   await page
-    .getByRole("button", { name: "Baseline experiment 1", exact: true })
+    .getByTestId("attempt-list")
+    .getByRole("button", { name: /First kept baseline/ })
     .click();
   await region.getByText(/Empty tree/).waitFor();
   assert.deepEqual(await hashFiles(fixture.repo), afterMutation);

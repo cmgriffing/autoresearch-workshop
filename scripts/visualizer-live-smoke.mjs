@@ -118,27 +118,32 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(uiOrigin);
   await page.getByText("Live updates connected", { exact: true }).waitFor();
-  const baseline = page.getByRole("button", {
-    name: "Baseline experiment 1",
-    exact: true,
+  const baseline = page.getByTestId("attempt-list").getByRole("button", {
+    name: /^Select experiment 1 from the attempt list/,
   });
   await baseline.click();
   await page
     .getByRole("heading", { name: "Experiment 01", exact: true })
     .waitFor();
-  await page.evaluate(() => window.scrollTo(0, 400));
-  const scrollBefore = await page.evaluate(() => window.scrollY);
+  await page.locator(".review-pane").evaluate((element) => {
+    element.scrollTop = 400;
+  });
+  const scrollBefore = await page
+    .locator(".review-pane")
+    .evaluate((element) => element.scrollTop);
 
   const initialLog = await readFile(logPath, "utf8");
   await writeFile(logPath, `${initialLog}${record(3, 12)}\n`);
   await page
     .getByRole("button", {
-      name: "Select experiment 3 from history",
-      exact: true,
+      name: /^Select experiment 3 from the attempt list/,
     })
     .waitFor();
   assert.equal(await baseline.getAttribute("aria-pressed"), "true");
-  assert.equal(await page.evaluate(() => window.scrollY), scrollBefore);
+  assert.equal(
+    await page.locator(".review-pane").evaluate((element) => element.scrollTop),
+    scrollBefore,
+  );
 
   await writeFile(
     logPath,
@@ -146,7 +151,12 @@ try {
   );
   await new Promise((resolve) => setTimeout(resolve, 250));
   assert.equal(
-    await page.getByRole("button", { name: /Select experiment 4/ }).count(),
+    await page
+      .getByTestId("attempt-list")
+      .getByRole("button", {
+        name: /^Select experiment 4 from the attempt list/,
+      })
+      .count(),
     0,
   );
   await writeFile(
@@ -155,16 +165,14 @@ try {
   );
   await page
     .getByRole("button", {
-      name: "Select experiment 4 from history",
-      exact: true,
+      name: /^Select experiment 4 from the attempt list/,
     })
     .waitFor();
   assert.equal(await baseline.getAttribute("aria-pressed"), "true");
 
   await page
     .getByRole("button", {
-      name: "Select experiment 4 from history",
-      exact: true,
+      name: /^Select experiment 4 from the attempt list/,
     })
     .click();
   await writeFile(
@@ -225,8 +233,7 @@ try {
   );
   await page
     .getByRole("button", {
-      name: "Select experiment 6 from history",
-      exact: true,
+      name: /^Select experiment 6 from the attempt list/,
     })
     .waitFor();
   releaseHeld();
@@ -234,8 +241,7 @@ try {
   assert.equal(
     await page
       .getByRole("button", {
-        name: "Select experiment 6 from history",
-        exact: true,
+        name: /^Select experiment 6 from the attempt list/,
       })
       .count(),
     1,
@@ -258,8 +264,7 @@ try {
   await page.getByText("Live updates connected", { exact: true }).waitFor();
   await page
     .getByRole("button", {
-      name: "Select experiment 7 from history",
-      exact: true,
+      name: /^Select experiment 7 from the attempt list/,
     })
     .waitFor();
   assert.equal(await baseline.getAttribute("aria-pressed"), "true");
@@ -283,7 +288,12 @@ try {
   );
   await new Promise((resolve) => setTimeout(resolve, 250));
   assert.equal(
-    await page.getByRole("button", { name: /Select experiment 8/ }).count(),
+    await page
+      .getByTestId("attempt-list")
+      .getByRole("button", {
+        name: /^Select experiment 8 from the attempt list/,
+      })
+      .count(),
     0,
   );
   await page
@@ -291,8 +301,7 @@ try {
     .click();
   await page
     .getByRole("button", {
-      name: "Select experiment 8 from history",
-      exact: true,
+      name: /^Select experiment 8 from the attempt list/,
     })
     .waitFor();
   assert.equal(await baseline.getAttribute("aria-pressed"), "true");

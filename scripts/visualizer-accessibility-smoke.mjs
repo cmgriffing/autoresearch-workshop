@@ -90,6 +90,117 @@ async function tabUntil(page, locator, label, limit = 60) {
   }
   throw new Error(`Tab order never reached ${label}`);
 }
+async function selectProject(page, name) {
+  await page.getByRole("combobox", { name: /^Project/ }).click();
+  await page
+    .getByRole("option", {
+      name,
+      ...(typeof name === "string" ? { exact: true } : {}),
+    })
+    .first()
+    .click();
+}
+async function setThreshold(page, prefix, limit = 40) {
+  const slider = page.getByRole("slider", {
+    name: "Minimum win improvement percentage",
+  });
+  await slider.focus();
+  await page.keyboard.press("Home");
+  for (let step = 0; step <= limit; step += 1) {
+    const text = await page.getByTestId("threshold-readout").innerText();
+    if (text.startsWith(prefix)) return;
+    await page.keyboard.press("ArrowRight");
+  }
+  throw new Error(`Threshold never reached ${prefix}`);
+}
+async function setThresholdMax(page) {
+  const slider = page.getByRole("slider", {
+    name: "Minimum win improvement percentage",
+  });
+  await slider.focus();
+  await page.keyboard.press("End");
+}
+async function assertRenderedContrast(page, label) {
+  const failures = await page.evaluate(() => {
+    const parse = (value) => {
+      const match = value.match(/rgba?\(([^)]+)\)/);
+      if (!match) return null;
+      const parts = match[1]
+        .split(",")
+        .map((part) => Number.parseFloat(part.trim()));
+      return { r: parts[0], g: parts[1], b: parts[2], a: parts[3] ?? 1 };
+    };
+    const luminance = ({ r, g, b }) => {
+      const channel = (value) => {
+        const c = value / 255;
+        return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+    };
+    const contrast = (foreground, background) => {
+      const [high, low] = [luminance(foreground), luminance(background)].sort(
+        (a, b) => b - a,
+      );
+      return (high + 0.05) / (low + 0.05);
+    };
+    const failures = [];
+    for (const element of document.querySelectorAll("body *")) {
+      if (element.closest("[disabled]")) continue;
+      if (element.closest('[aria-hidden="true"]')) continue;
+      if (!element.getClientRects().length) continue;
+      const rect = element.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.right < 0) continue;
+      const style = getComputedStyle(element);
+      if (style.visibility === "hidden" || style.display === "none") continue;
+      if (Number.parseFloat(style.opacity) < 1) continue;
+      const hasText = [...element.childNodes].some(
+        (node) =>
+          node.nodeType === Node.TEXT_NODE &&
+          node.textContent.trim().length > 0,
+      );
+      if (!hasText) continue;
+      const isSvgText =
+        element.namespaceURI === "http://www.w3.org/2000/svg" &&
+        element.tagName.toLowerCase() === "text";
+      const foreground = parse(isSvgText ? style.fill : style.color);
+      let node = element.parentElement;
+      let background = parse(style.backgroundColor);
+      if (!background || background.a < 1) {
+        while (node && node !== document.documentElement) {
+          const candidate = parse(getComputedStyle(node).backgroundColor);
+          if (candidate && candidate.a === 1) {
+            background = candidate;
+            break;
+          }
+          node = node.parentElement;
+        }
+      }
+      if (!foreground || !background) continue;
+      const fontSize = Number.parseFloat(style.fontSize);
+      const weight = Number(style.fontWeight) || 400;
+      const large = fontSize >= 24 || (fontSize >= 18.66 && weight >= 700);
+      const required = large ? 3 : 4.5;
+      const ratio = contrast(foreground, background);
+      if (ratio + 0.005 < required)
+        failures.push({
+          text: element.textContent.trim().slice(0, 60),
+          selector: `${element.tagName.toLowerCase()}.${element.className}`,
+          html: element.outerHTML.slice(0, 200),
+          ratio: Number(ratio.toFixed(2)),
+          required,
+          color: style.color,
+          fill: style.fill,
+          background: `rgb(${background.r}, ${background.g}, ${background.b})`,
+        });
+    }
+    return failures;
+  });
+  assert.deepEqual(
+    failures,
+    [],
+    `${label}: rendered text must meet AA contrast`,
+  );
+}
 
 let browser;
 let releaseDiff;
@@ -157,25 +268,15 @@ try {
     errors.push(`${message.text()} (${message.location().url})`);
   });
   await page.goto(uiOrigin);
-  await page.getByText("No sessions found in this root.").waitFor();
+  const projectSelector = page.getByRole("combobox", { name: /^Project/ });
+  await projectSelector.waitFor();
 
-  // ---- Wide layout and discovery states ----
+  // ---- Wide layout and keyboard-only journey ----
   assert.equal(
-    await page.getByRole("complementary", { name: "Projects" }).count(),
-    1,
-  );
-  assert.equal(
-    await page.getByRole("complementary", { name: "Wins" }).count(),
+    await page.getByRole("complementary", { name: "Session rail" }).count(),
     1,
   );
   assert.equal(await page.locator(".compact-bar").count(), 0);
-  assert.equal(
-    await page.getByText("Uninitialized session", { exact: true }).count(),
-    1,
-  );
-  assert.equal(await page.getByText("0 experiments").count(), 2);
-
-  // ---- Keyboard-only wide journey ----
   const skipLink = page.getByRole("link", { name: "Skip to result review" });
   await page.keyboard.press("Tab");
   await assertKeyboardFocus(skipLink, "skip link");
@@ -183,41 +284,57 @@ try {
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => document.activeElement?.id === "review");
 
-  const projectButton = page.getByRole("button", {
-    name: /^project · project ·/,
-  });
-  await tabUntil(page, projectButton, "project button");
-  await assertKeyboardFocus(projectButton, "project button");
+  await tabUntil(page, projectSelector, "project selector");
+  await assertKeyboardFocus(projectSelector, "project selector");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.type("project");
   await page.keyboard.press("Enter");
   await page.getByRole("heading", { name: "Latency", exact: true }).waitFor();
   assert.equal(
-    await projectButton.evaluate(
+    await projectSelector.evaluate(
       (element) => element === document.activeElement,
     ),
     true,
-    "selection keeps focus on the project button",
+    "selection returns focus to the project selector",
   );
+  const attemptList = page.getByTestId("attempt-list");
+
+  // Discovery states remain available from the selector.
+  await projectSelector.click();
+  const listbox = page.getByRole("listbox", { name: "Projects" });
+  assert.equal(
+    await listbox.getByText("Uninitialized session", { exact: true }).count(),
+    1,
+  );
+  assert.equal(
+    await listbox.getByText("0 experiments", { exact: true }).count(),
+    2,
+  );
+  await page.keyboard.press("Escape");
+  await page.getByRole("region", { name: "Metric trajectory" }).waitFor();
+  await assertRenderedContrast(page, "wide state");
 
   // Win selection, outside-filter retention, and a scoped-commit run.
-  const winThree = page.getByRole("button", { name: /^Win experiment 3:/ });
+  const winThree = attemptList.getByRole("button", {
+    name: /^Select experiment 3 from the attempt list/,
+  });
   await tabUntil(page, winThree, "win experiment 3");
   await assertKeyboardFocus(winThree, "win experiment 3");
   await page.keyboard.press("Enter");
   await page
     .getByRole("heading", { name: "Experiment 03", exact: true })
     .waitFor();
-  const threshold = page.getByRole("spinbutton", {
-    name: "Minimum win improvement percentage",
-  });
-  await threshold.fill("50");
+  await setThresholdMax(page);
   await page
-    .getByText("Selected win remains open outside the current filter.")
+    .getByText("Selected experiment remains open outside the current filter.")
     .waitFor();
-  await threshold.fill("0");
+  await setThreshold(page, "0%");
   await page
-    .getByText("Selected win remains open outside the current filter.")
+    .getByText("Selected experiment remains open outside the current filter.")
     .waitFor({ state: "detached" });
-  const winFour = page.getByRole("button", { name: /^Win experiment 4:/ });
+  const winFour = attemptList.getByRole("button", {
+    name: /^Select experiment 4 from the attempt list.*New best/,
+  });
   await tabUntil(page, winFour, "win experiment 4");
   await assertKeyboardFocus(winFour, "win experiment 4");
   await page.keyboard.press("Enter");
@@ -236,7 +353,7 @@ try {
   await page.getByText("This session has no ideas.md available.").waitFor();
   assert.match(
     await page.locator(".document-card").innerText(),
-    /CURRENT PROJECT DOCUMENT · PROJECT/,
+    /Current ideas for project/i,
   );
   const resultsButton = page.getByRole("button", {
     name: "Review results",
@@ -282,9 +399,11 @@ try {
   await page.keyboard.press("ArrowRight");
   await chart.locator(".attempt-tooltip").waitFor();
 
-  // Re-select run 4 from history, then sweep forward through the diff controls.
-  const historyFour = page
-    .getByRole("button", { name: "Select experiment 4 from history" })
+  // Re-select run 4 from the attempt list, then sweep forward through the diff controls.
+  const historyFour = attemptList
+    .getByRole("button", {
+      name: /^Select experiment 4 from the attempt list.*New best/,
+    })
     .first();
   await tabUntil(page, historyFour, "history experiment 4");
   await page.keyboard.press("Space");
@@ -325,13 +444,12 @@ try {
   await diff.locator(".split-diff").waitFor();
   assert.match(await diff.innerText(), /code\.ts/);
 
-  // History selection is the textual chart equivalent.
-  const historyThree = page.getByRole("button", {
-    name: "Select experiment 3 from history",
-    exact: true,
+  // Attempt selection is the textual chart equivalent.
+  const historyThree = attemptList.getByRole("button", {
+    name: /^Select experiment 3 from the attempt list/,
   });
-  await tabUntil(page, historyThree, "history experiment 3");
-  await assertKeyboardFocus(historyThree, "history experiment 3");
+  await tabUntil(page, historyThree, "attempt list experiment 3");
+  await assertKeyboardFocus(historyThree, "attempt list experiment 3");
   await page.keyboard.press("Space");
   await page
     .getByRole("heading", { name: "Experiment 03", exact: true })
@@ -348,6 +466,7 @@ try {
   await page
     .getByText(/Stale data: showing the last successfully read project data/)
     .waitFor();
+  await assertRenderedContrast(page, "stale state");
   assert.equal(
     await page
       .getByRole("heading", { name: "Experiment 03", exact: true })
@@ -384,7 +503,8 @@ try {
     .waitFor();
   await page.unrouteAll({ behavior: "wait" });
   await page.reload();
-  await page.getByText("No sessions found in this root.").waitFor();
+  await projectSelector.waitFor();
+  await page.locator(".project-meta-name").waitFor();
 
   // Read-only applications leave every fixture file, including Git data,
   // untouched before the controlled mutations below.
@@ -400,11 +520,7 @@ try {
   await page.waitForTimeout(200);
   assert.equal(await page.locator(".compact-bar").isVisible(), true);
   assert.equal(
-    await page.getByRole("complementary", { name: "Projects" }).count(),
-    0,
-  );
-  assert.equal(
-    await page.getByRole("complementary", { name: "Wins" }).count(),
+    await page.getByRole("complementary", { name: "Session rail" }).count(),
     0,
   );
   assert.equal(
@@ -417,35 +533,28 @@ try {
     await page.getByText("Live updates connected", { exact: true }).count(),
     1,
   );
-  const projectsTrigger = page.getByRole("button", { name: /^Projects/ });
-  const winsTrigger = page.getByRole("button", { name: /^Wins/ });
-  const projectsDialog = page.getByRole("dialog", { name: "Projects" });
-  const winsDialog = page.getByRole("dialog", { name: "Wins" });
-  async function chooseProject(pattern) {
-    await projectsTrigger.focus();
+  const sessionTrigger = page.getByRole("button", { name: /^Session/ });
+  const sessionDialog = page.getByRole("dialog", { name: "Session" });
+  async function openSessionDrawer() {
+    await sessionTrigger.focus();
     await page.keyboard.press("Enter");
-    await projectsDialog.waitFor();
-    await tabUntil(
-      page,
-      projectsDialog.getByRole("button", { name: pattern }),
-      `project ${pattern}`,
-    );
-    await page.keyboard.press("Enter");
-    await projectsDialog.waitFor({ state: "detached" });
+    await sessionDialog.waitFor();
   }
-  async function openWinsDrawer() {
-    await winsTrigger.focus();
-    await page.keyboard.press("Enter");
-    await winsDialog.waitFor();
+  async function chooseProject(pattern) {
+    await openSessionDrawer();
+    await sessionDialog.getByRole("combobox", { name: /^Project/ }).click();
+    await sessionDialog.getByRole("option", { name: pattern }).first().click();
+    await sessionDialog.waitFor({ state: "detached" });
   }
 
   await page.keyboard.press("Tab");
-  await projectsTrigger.focus();
-  await assertKeyboardFocus(projectsTrigger, "compact projects trigger");
+  await sessionTrigger.focus();
+  await assertKeyboardFocus(sessionTrigger, "compact session trigger");
   await page.keyboard.press("Enter");
-  await projectsDialog.waitFor();
-  const closeProjects = page.getByRole("button", { name: "Close projects" });
-  await assertKeyboardFocus(closeProjects, "projects drawer close");
+  await sessionDialog.waitFor();
+  const closeSession = page.getByRole("button", { name: "Close session" });
+  await assertKeyboardFocus(closeSession, "session drawer close");
+  await assertRenderedContrast(page, "narrow drawer state");
   for (let step = 0; step < 12; step += 1) {
     await page.keyboard.press("Tab");
     assert.equal(
@@ -453,7 +562,7 @@ try {
         Boolean(document.activeElement?.closest('[role="dialog"]')),
       ),
       true,
-      "Tab stays inside the projects drawer",
+      "Tab stays inside the session drawer",
     );
   }
   await page.keyboard.press("Shift+Tab");
@@ -462,54 +571,53 @@ try {
       Boolean(document.activeElement?.closest('[role="dialog"]')),
     ),
     true,
-    "Shift+Tab wraps inside the projects drawer",
+    "Shift+Tab wraps inside the session drawer",
   );
-  await tabUntil(
-    page,
-    projectsDialog.getByRole("button", { name: /^project · project ·/ }),
-    "drawer project button",
-  );
+  const drawerSelector = sessionDialog.getByRole("combobox", {
+    name: /^Project/,
+  });
+  await tabUntil(page, drawerSelector, "drawer project selector");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.type("project");
   await page.keyboard.press("Enter");
   await page.getByRole("heading", { name: "Latency", exact: true }).waitFor();
-  assert.equal(await projectsDialog.count(), 0);
+  assert.equal(await sessionDialog.count(), 0);
   assert.equal(
-    await projectsTrigger.evaluate(
+    await sessionTrigger.evaluate(
       (element) => element === document.activeElement,
     ),
     true,
-    "closing the drawer restores the projects trigger",
+    "closing the drawer restores the session trigger",
   );
 
-  // Wins drawer selection and Escape restoration.
-  await winsTrigger.focus();
-  await page.keyboard.press("Enter");
-  await winsDialog.waitFor();
-  await assertKeyboardFocus(
-    page.getByRole("button", { name: "Close wins" }),
-    "wins drawer close",
-  );
+  // Attempt selection and Escape restoration inside the drawer.
+  await openSessionDrawer();
+  await assertKeyboardFocus(closeSession, "session drawer close again");
   await page.keyboard.press("Escape");
-  assert.equal(await winsDialog.count(), 0);
+  assert.equal(await sessionDialog.count(), 0);
   assert.equal(
-    await winsTrigger.evaluate((element) => element === document.activeElement),
+    await sessionTrigger.evaluate(
+      (element) => element === document.activeElement,
+    ),
     true,
-    "Escape restores the wins trigger",
+    "Escape restores the session trigger",
   );
-  await openWinsDrawer();
-  await tabUntil(
-    page,
-    winsDialog.getByRole("button", { name: /^Win experiment 4:/ }),
-    "drawer win 4",
-  );
+  await openSessionDrawer();
+  const drawerWinFour = sessionDialog.getByRole("button", {
+    name: /^Select experiment 4 from the attempt list.*New best/,
+  });
+  await tabUntil(page, drawerWinFour, "drawer win 4");
   await page.keyboard.press("Enter");
   await page
     .getByRole("heading", { name: "Experiment 04", exact: true })
     .waitFor();
-  assert.equal(await winsDialog.count(), 0);
+  assert.equal(await sessionDialog.count(), 0);
   assert.equal(
-    await winsTrigger.evaluate((element) => element === document.activeElement),
+    await sessionTrigger.evaluate(
+      (element) => element === document.activeElement,
+    ),
     true,
-    "win selection restores the wins trigger",
+    "attempt selection restores the session trigger",
   );
 
   // Held diff keeps the loading state while navigation stays usable.
@@ -523,17 +631,19 @@ try {
       await route.continue().catch(() => {});
     },
   );
-  const historyEight = page.getByRole("button", {
-    name: "Select experiment 8 from history",
-    exact: true,
+  await openSessionDrawer();
+  const historyEight = sessionDialog.getByRole("button", {
+    name: /^Select experiment 8 from the attempt list/,
   });
   await historyEight.focus();
   await page.keyboard.press("Space");
   await page.getByText("Loading the recorded commit comparison…").waitFor();
-  await openWinsDrawer();
+  await openSessionDrawer();
   assert.equal(
-    await winsDialog
-      .getByRole("button", { name: /^Win experiment 4:/ })
+    await sessionDialog
+      .getByRole("button", {
+        name: /^Select experiment 4 from the attempt list.*New best/,
+      })
       .count(),
     1,
   );
@@ -558,9 +668,9 @@ try {
         }),
       }),
   );
-  const historyNine = page.getByRole("button", {
-    name: "Select experiment 9 from history",
-    exact: true,
+  await openSessionDrawer();
+  const historyNine = sessionDialog.getByRole("button", {
+    name: /^Select experiment 9 from the attempt list/,
   });
   await historyNine.focus();
   await page.keyboard.press("Space");
@@ -578,8 +688,9 @@ try {
   // Empty, malformed, uninitialized, and no-valid-history states.
   await chooseProject(/^empty-log · empty-log ·/);
   await page.getByText("No experiments available").waitFor();
-  await openWinsDrawer();
-  await winsDialog.getByText("This log is empty.").waitFor();
+  await openSessionDrawer();
+  await sessionDialog.getByText("This log is empty.").waitFor();
+  await assertRenderedContrast(page, "empty state");
   await page.keyboard.press("Escape");
   await chooseProject(/^malformed · malformed ·/);
   await page.getByText("No experiments available").waitFor();
@@ -587,25 +698,29 @@ try {
     await page.locator(".diagnostic").first().innerText(),
     /Line 2: Invalid JSON record\./,
   );
-  await openWinsDrawer();
-  await winsDialog.getByText("No valid experiments in this session.").waitFor();
+  await openSessionDrawer();
+  await sessionDialog
+    .getByText("No valid experiments in this session.")
+    .waitFor();
   await page.keyboard.press("Escape");
   await chooseProject(/^uninitialized · uninitialized ·/);
   await page
     .getByText(/Uninitialized session\. No log\.jsonl has been recorded/)
     .waitFor();
-  await openWinsDrawer();
-  await winsDialog
+  await openSessionDrawer();
+  await sessionDialog
     .getByText("This session has not produced a log yet.")
     .waitFor();
   await page.keyboard.press("Escape");
 
   // Missing current notes and unavailable Git preserve result details.
   await chooseProject(/^project · project ·/);
-  await openWinsDrawer();
+  await openSessionDrawer();
   await tabUntil(
     page,
-    winsDialog.getByRole("button", { name: /^Win experiment 4:/ }),
+    sessionDialog.getByRole("button", {
+      name: /^Select experiment 4 from the attempt list.*New best/,
+    }),
     "drawer win 4 again",
   );
   await page.keyboard.press("Enter");
@@ -623,9 +738,10 @@ try {
     .getByRole("button", { name: "Review results", exact: true })
     .focus();
   await page.keyboard.press("Enter");
-  const duplicateFour = page
-    .getByRole("button", { name: "Select experiment 4 from history" })
-    .nth(1);
+  await openSessionDrawer();
+  const duplicateFour = sessionDialog.getByRole("button", {
+    name: /Select experiment 4 from the attempt list: attempt 5/,
+  });
   await duplicateFour.focus();
   await page.keyboard.press("Space");
   await page
@@ -641,39 +757,41 @@ try {
   );
 
   // No-filtered-win keeps the baseline and outside-filter selection.
-  await openWinsDrawer();
+  await openSessionDrawer();
   await tabUntil(
     page,
-    winsDialog.getByRole("button", { name: /^Win experiment 3:/ }),
+    sessionDialog.getByRole("button", {
+      name: /^Select experiment 3 from the attempt list/,
+    }),
     "drawer win 3",
   );
   await page.keyboard.press("Enter");
   await page
     .getByRole("heading", { name: "Experiment 03", exact: true })
     .waitFor();
-  await openWinsDrawer();
-  const narrowThreshold = winsDialog.getByRole("spinbutton", {
-    name: "Minimum win improvement percentage",
-  });
-  await narrowThreshold.fill("50");
-  await winsDialog
-    .getByText(
-      "No wins meet this filter. The baseline and full history remain available.",
-    )
-    .waitFor();
-  await winsDialog
-    .getByRole("button", { name: /^Baseline experiment 2/ })
+  await openSessionDrawer();
+  await setThresholdMax(page);
+  await sessionDialog.getByText("No wins meet this threshold.").waitFor();
+  assert.equal(
+    await sessionDialog
+      .getByRole("button", {
+        name: /^Select experiment 9 from the attempt list/,
+      })
+      .count(),
+    1,
+    "failed attempts survive a strict threshold",
+  );
+  await sessionDialog
+    .getByRole("button", { name: /First kept baseline/ })
     .waitFor();
   await page
-    .getByText("Selected win remains open outside the current filter.")
+    .getByText("Selected experiment remains open outside the current filter.")
     .waitFor();
-  await narrowThreshold.fill("0");
+  await setThreshold(page, "0%");
   await page.keyboard.press("Escape");
 
   // Live append updates navigation without stealing the selected result.
-  await projectsTrigger.focus();
-  await page.keyboard.press("Enter");
-  await projectsDialog.waitFor();
+  await openSessionDrawer();
   await appendFile(
     logPath,
     `${JSON.stringify({
@@ -689,7 +807,7 @@ try {
       description: "Live appended result",
     })}\n`,
   );
-  await projectsDialog.getByText("19 experiments").waitFor({ timeout: 15_000 });
+  await sessionDialog.getByText("19 experiments").waitFor({ timeout: 15_000 });
   await page.keyboard.press("Escape");
   await page
     .getByRole("heading", { name: "Experiment 03", exact: true })
@@ -709,7 +827,9 @@ try {
   );
 
   // Compact navigation stays reachable while the review pane scrolls.
-  await page.evaluate(() => window.scrollTo(0, 1500));
+  await page.locator(".review-pane").evaluate((element) => {
+    element.scrollTop = 1500;
+  });
   await page.waitForTimeout(150);
   assert.equal(
     await page
@@ -728,11 +848,7 @@ try {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.waitForTimeout(200);
   assert.equal(
-    await page.getByRole("complementary", { name: "Projects" }).count(),
-    1,
-  );
-  assert.equal(
-    await page.getByRole("complementary", { name: "Wins" }).count(),
+    await page.getByRole("complementary", { name: "Session rail" }).count(),
     1,
   );
   assert.equal(await page.locator(".compact-bar").count(), 0);

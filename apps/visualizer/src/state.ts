@@ -5,6 +5,13 @@ import type {
   ProjectSnapshot,
   ProjectsResponse,
 } from "visualizar-common";
+import {
+  attemptDecision,
+  buildThresholdStops,
+  nearestStopIndex,
+  winPassesThreshold,
+} from "./attempts";
+import type { AttemptRow } from "./attempts";
 
 export const projectListAtom = atom<ProjectsResponse | null>(null);
 export const projectListErrorAtom = atom<string | null>(null);
@@ -24,6 +31,8 @@ export const selectResultAtom = atom(null, (_get, set, id: string) => {
   set(mainViewAtom, "results");
 });
 export const winThresholdAtom = atom<number | null>(null);
+export type AttemptScope = "all" | "wins" | "failed";
+export const attemptScopeAtom = atom<AttemptScope>("all");
 export const diffComparisonAtom = atom<DiffComparison>("parent");
 export const includeAutoAtom = atom(false);
 export const diffPresentationAtom = atom<"unified" | "split">("unified");
@@ -57,24 +66,105 @@ export const selectedSegmentAtom = atom((get) => {
   const segmentId = get(selectedSegmentIdAtom);
   return project?.segments.find((segment) => segment.id === segmentId) ?? null;
 });
-export const segmentRunsAtom = atom((get) => {
+export const thresholdValueAtom = atom((get) => {
+  const project = get(selectedProjectAtom);
+  return get(winThresholdAtom) ?? project?.minWinImprovementPct ?? 0;
+});
+export const attemptRowsAtom = atom<AttemptRow[]>((get) => {
   const project = get(selectedProjectAtom);
   const segment = get(selectedSegmentAtom);
   if (!project || !segment) return [];
-  const runIds = new Set(segment.runIds);
-  return project.runs.filter((run) => runIds.has(run.id));
+  const runsById = new Map(project.runs.map((run) => [run.id, run]));
+  const winsById = new Map(segment.wins.map((win) => [win.runId, win]));
+  return segment.attempts.flatMap((point) => {
+    const run = runsById.get(point.runId);
+    return run
+      ? [
+          {
+            point,
+            run,
+            decision: attemptDecision(point),
+            win: winsById.get(point.runId) ?? null,
+          },
+        ]
+      : [];
+  });
 });
-export const filteredWinsAtom = atom((get) => {
-  const segment = get(selectedSegmentAtom);
+export const attemptCountsAtom = atom((get) => {
+  const rows = get(attemptRowsAtom);
+  const wins = rows.filter((row) => row.decision === "win").length;
+  const baseline = rows.filter((row) => row.decision === "baseline").length;
+  return {
+    all: rows.length,
+    wins,
+    baseline,
+    failed: rows.filter((row) => row.decision === "failed").length,
+  };
+});
+export const visibleAttemptRowsAtom = atom<AttemptRow[]>((get) => {
+  const rows = get(attemptRowsAtom);
+  const scope = get(attemptScopeAtom);
+  const threshold = get(thresholdValueAtom);
+  return rows.filter((row) => {
+    const passes = !row.point.isWin || winPassesThreshold(row.win, threshold);
+    switch (scope) {
+      case "wins":
+        return (
+          row.decision === "baseline" || (row.decision === "win" && passes)
+        );
+      case "failed":
+        return row.decision === "failed";
+      default:
+        return passes;
+    }
+  });
+});
+export const filterReadoutAtom = atom((get) => {
+  const rows = get(attemptRowsAtom);
+  const threshold = get(thresholdValueAtom);
+  const wins = rows.filter((row) => row.decision === "win");
+  return {
+    threshold,
+    winsPassing: wins.filter((row) => winPassesThreshold(row.win, threshold))
+      .length,
+    winsTotal: wins.length,
+    listed: get(visibleAttemptRowsAtom).length,
+    total: rows.length,
+  };
+});
+export const selectedAttemptOutsideFilterAtom = atom((get) => {
+  const runId = get(selectedRunIdAtom);
+  if (!runId) return false;
+  const rows = get(attemptRowsAtom);
+  if (!rows.some((row) => row.run.id === runId)) return false;
+  return !get(visibleAttemptRowsAtom).some((row) => row.run.id === runId);
+});
+export const thresholdStopsAtom = atom((get) => {
   const project = get(selectedProjectAtom);
-  if (!segment || !project) return [];
-  const threshold = get(winThresholdAtom) ?? project.minWinImprovementPct;
-  return segment.wins.filter(
-    (win) =>
-      threshold === 0 ||
-      (win.incremental.percentage !== null &&
-        win.incremental.percentage >= threshold),
+  const segment = get(selectedSegmentAtom);
+  if (!segment) return null;
+  const configured = project?.minWinImprovementPct ?? 0;
+  const percentages = segment.wins.flatMap((win) =>
+    win.incremental.percentage === null ? [] : [win.incremental.percentage],
   );
+  if (percentages.length === 0)
+    return {
+      stops: [0],
+      measured: false,
+      hasWins: segment.wins.length > 0,
+      configured,
+    };
+  return {
+    stops: buildThresholdStops(Math.max(...percentages), configured),
+    measured: true,
+    hasWins: true,
+    configured,
+  };
+});
+export const thresholdStopIndexAtom = atom((get) => {
+  const stops = get(thresholdStopsAtom);
+  if (!stops) return 0;
+  return nearestStopIndex(stops.stops, get(thresholdValueAtom));
 });
 export const selectedDiffAtom = atom((get) => {
   const project = get(selectedProjectAtom);
@@ -96,6 +186,7 @@ export const selectProjectAtom = atom(null, (get, set, id: string | null) => {
   set(selectedSegmentIdAtom, null);
   set(selectedRunIdAtom, null);
   set(winThresholdAtom, null);
+  set(attemptScopeAtom, "all");
   set(projectSnapshotAtom, null);
   set(projectErrorAtom, null);
   set(diffLoadAtom, null);

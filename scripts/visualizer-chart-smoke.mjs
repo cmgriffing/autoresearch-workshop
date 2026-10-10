@@ -45,6 +45,27 @@ async function waitReady(url) {
   throw new Error(children.map((value) => value.output()).join("\n"));
 }
 
+async function setThreshold(page, prefix, limit = 40) {
+  const slider = page.getByRole("slider", {
+    name: "Minimum win improvement percentage",
+  });
+  await slider.focus();
+  await page.keyboard.press("Home");
+  for (let step = 0; step <= limit; step += 1) {
+    const text = await page.getByTestId("threshold-readout").innerText();
+    if (text.startsWith(prefix)) return;
+    await page.keyboard.press("ArrowRight");
+  }
+  throw new Error(`Threshold never reached ${prefix}`);
+}
+async function setThresholdMax(page) {
+  const slider = page.getByRole("slider", {
+    name: "Minimum win improvement percentage",
+  });
+  await slider.focus();
+  await page.keyboard.press("End");
+}
+
 let browser;
 let releaseDiff;
 try {
@@ -104,10 +125,14 @@ try {
   await page.goto(uiOrigin);
   const chart = page.getByRole("region", { name: "Metric trajectory" });
   const details = page.getByRole("region", { name: "Selected experiment" });
-  const sidebar = page.getByRole("complementary", { name: "Wins" });
+  const attemptList = page.getByTestId("attempt-list");
   const marker = (point) => chart.locator(`[data-run-id="${point.runId}"]`);
-  const rows = () => page.getByRole("table").locator("tbody tr");
-  async function selected(point, index) {
+  const listEntry = (point) =>
+    attemptList.locator(`.attempt-entry[data-run-id="${point.runId}"]`);
+  const rows = () => attemptList.locator(".attempt-entry");
+  const pressed = () =>
+    attemptList.locator('.attempt-entry[aria-pressed="true"]');
+  async function selected(point, listed = true) {
     await page
       .getByRole("heading", {
         name: `Experiment ${String(point.run).padStart(2, "0")}`,
@@ -115,10 +140,8 @@ try {
       })
       .waitFor();
     assert.equal(await marker(point).getAttribute("aria-pressed"), "true");
-    assert.equal(
-      await rows().nth(index).getByRole("button").getAttribute("aria-pressed"),
-      "true",
-    );
+    if (listed)
+      assert.equal(await listEntry(point).getAttribute("aria-pressed"), "true");
     assert.equal(await chart.locator('[aria-pressed="true"]').count(), 1);
   }
   await marker(lower.attempts[1]).waitFor();
@@ -146,26 +169,24 @@ try {
   // An initial failure is inspectable but establishes neither baseline nor best.
   await marker(lower.attempts[0]).focus();
   await page.keyboard.press("Space");
-  await selected(lower.attempts[0], 0);
+  await selected(lower.attempts[0]);
   assert.equal(
     (await page.getByTestId("selected-metric").innerText()).replace(/\s/g, ""),
     "0ms",
   );
   assert.match(
     await details.innerText(),
-    /Failed attempt · recorded metric excluded from chart/,
+    /Failed attempt · recorded metric excluded from the chart/,
   );
-  assert.match(await rows().nth(0).innerText(), /Unavailable/);
+  assert.match(await listEntry(lower.attempts[0]).innerText(), /Unavailable/);
   assert.equal(await details.locator("script").count(), 0);
 
   // Keyboard point selection, source values, and escaped arbitrary JSON.
   await marker(lower.attempts[1]).focus();
   await page.keyboard.press("Enter");
-  await selected(lower.attempts[1], 1);
+  await selected(lower.attempts[1]);
   assert.equal(
-    await sidebar
-      .getByRole("button", { name: "Baseline experiment 2" })
-      .getAttribute("aria-pressed"),
+    await listEntry(lower.attempts[1]).getAttribute("aria-pressed"),
     "true",
   );
   assert.equal(
@@ -213,10 +234,18 @@ try {
 
   // A better discarded value never becomes the kept trajectory or a win.
   await marker(lower.attempts[2]).click();
-  await selected(lower.attempts[2], 2);
-  assert.match(await details.innerText(), /Discarded attempt/);
-  assert.match(await rows().nth(2).innerText(), /Discarded\s+10/);
-  assert.equal(await sidebar.locator('[aria-pressed="true"]').count(), 0);
+  await selected(lower.attempts[2]);
+  assert.match(await details.innerText(), /Discarded/);
+  assert.match(await listEntry(lower.attempts[2]).innerText(), /Discarded/);
+  assert.match(
+    await listEntry(lower.attempts[2]).innerText(),
+    /Best kept so far 10 ms/,
+  );
+  assert.equal(await pressed().count(), 1);
+  assert.equal(
+    await listEntry(lower.attempts[2]).getAttribute("aria-pressed"),
+    "true",
+  );
   assert.equal(
     await details.getByRole("code").innerText(),
     JSON.stringify(fixture.records[3].asi, null, 2),
@@ -227,10 +256,12 @@ try {
 
   // Win, duplicate kept number, and falsy confidence/ASI retain separate identity.
   await marker(lower.attempts[3]).click();
-  await selected(lower.attempts[3], 3);
+  await selected(lower.attempts[3]);
   assert.equal(
-    await sidebar
-      .getByRole("button", { name: /Win experiment 4:/ })
+    await attemptList
+      .getByRole("button", {
+        name: /^Select experiment 4 from the attempt list.*New best/,
+      })
       .getAttribute("aria-pressed"),
     "true",
   );
@@ -238,48 +269,47 @@ try {
     await marker(lower.attempts[3]).getAttribute("data-marker"),
     "win",
   );
-  assert.match(await details.innerText(), /New best kept result/);
+  assert.match(await details.innerText(), /New best/);
   assert.match(await details.innerText(), /Reported confidence\s+0/);
   assert.match(await details.innerText(), /1 ms · 10\.00%/);
   assert.equal(await details.getByRole("code").innerText(), "false");
-  await rows().nth(4).getByRole("button").focus();
+  await listEntry(lower.attempts[4]).focus();
   await page.keyboard.press("Space");
-  await selected(lower.attempts[4], 4);
+  await selected(lower.attempts[4]);
   assert.match(
     await details.innerText(),
     /Worse keep with duplicate display number/,
   );
-  assert.match(await details.innerText(), /Kept without a new best/);
+  assert.match(await details.innerText(), /Decision\s+Kept/i);
   assert.match(
     await details.innerText(),
     /Recorded timestamp \(UTC\)\s+Not recorded/i,
   );
   assert.equal(await details.getByRole("code").innerText(), "0");
-  assert.equal(await sidebar.locator('[aria-pressed="true"]').count(), 0);
+  assert.equal(await pressed().count(), 1);
+  assert.equal(
+    await listEntry(lower.attempts[4]).getAttribute("aria-pressed"),
+    "true",
+  );
 
-  const threshold = page.getByRole("spinbutton", {
-    name: "Minimum win improvement percentage",
-  });
-  await threshold.fill("50");
+  await setThresholdMax(page);
   await marker(lower.attempts[6]).click();
-  await selected(lower.attempts[6], 6);
+  await selected(lower.attempts[6], false);
   await page
-    .getByText("Selected win remains open outside the current filter.")
+    .getByText("Selected experiment remains open outside the current filter.")
     .waitFor();
   assert.equal(await chart.locator('g[data-marker="win"]').count(), 2);
   assert.equal(
     await details.locator("time").getAttribute("datetime"),
     "1970-01-01T00:00:00.000Z",
   );
-  await threshold.fill("0");
+  await setThreshold(page, "0%");
   assert.equal(
-    await sidebar
-      .getByRole("button", { name: /Win experiment 3:/ })
-      .getAttribute("aria-pressed"),
+    await listEntry(lower.attempts[6]).getAttribute("aria-pressed"),
     "true",
   );
   await marker(lower.attempts[5]).click();
-  await selected(lower.attempts[5], 5);
+  await selected(lower.attempts[5]);
   assert.match(await details.innerText(), /Checks failure placeholder/);
   assert.match(await details.innerText(), /Reported confidence\s+Not recorded/);
   assert.equal(await details.getByRole("code").innerText(), "null");
@@ -310,7 +340,7 @@ try {
   await page.unrouteAll({ behavior: "wait" });
   assert.match(await diff.innerText(), new RegExp(fixture.rootOid));
   assert.doesNotMatch(await diff.innerText(), /project\/code\.ts/);
-  await selected(lower.attempts[1], 1);
+  await selected(lower.attempts[1]);
 
   const segmentSelect = page.getByRole("combobox", { name: "Metric segment" });
   await segmentSelect.selectOption(higher.id);
@@ -322,25 +352,28 @@ try {
   );
   assert.equal(await details.count(), 0);
   await marker(higher.attempts[1]).click();
-  await selected(higher.attempts[1], 1);
+  await selected(higher.attempts[1]);
   assert.match(
     await details.innerText(),
     /percentage unavailable \(zero reference\)/,
   );
   assert.match(await details.innerText(), /Reported confidence\s+0\.01/);
-  await threshold.fill("1");
+  await setThreshold(page, "1.0%");
   await page
-    .getByText("Selected win remains open outside the current filter.")
+    .getByText("Selected experiment remains open outside the current filter.")
     .waitFor();
   assert.equal(
     await marker(higher.attempts[1]).getAttribute("aria-pressed"),
     "true",
   );
   await marker(higher.attempts[3]).click();
-  await selected(higher.attempts[3], 3);
+  await selected(higher.attempts[3]);
   assert.match(await details.innerText(), /Reported confidence\s+200/);
   assert.equal(await details.getByRole("code").innerText(), "true");
-  assert.match(await rows().nth(2).innerText(), /Discarded\s+5/);
+  assert.match(
+    await listEntry(higher.attempts[2]).innerText(),
+    /Best kept so far 5 pts/,
+  );
 
   await segmentSelect.selectOption(empty.id);
   await chart.getByText("No attempts recorded in this segment.").waitFor();
@@ -355,44 +388,54 @@ try {
   assert.equal(await chart.locator("svg").count(), 0);
   await marker(failures.attempts[1]).focus();
   await page.keyboard.press("Enter");
-  await selected(failures.attempts[1], 1);
-  assert.match(await rows().nth(1).innerText(), /Unavailable/);
+  await selected(failures.attempts[1]);
+  assert.match(
+    await listEntry(failures.attempts[1]).innerText(),
+    /Unavailable/,
+  );
   await segmentSelect.selectOption(single.id);
   await marker(single.attempts[0]).click();
-  await selected(single.attempts[0], 0);
+  await selected(single.attempts[0]);
   assert.equal(await chart.locator("g.attempt-marker").count(), 1);
   await segmentSelect.selectOption(discards.id);
   await marker(discards.attempts[0]).click();
-  await selected(discards.attempts[0], 0);
+  await selected(discards.attempts[0]);
   assert.equal(await chart.locator("g.attempt-marker").count(), 2);
   assert.equal(
-    await sidebar.getByRole("button", { name: /Baseline/ }).count(),
+    await attemptList
+      .getByRole("button", { name: /First kept baseline/ })
+      .count(),
     0,
   );
+  assert.match(await listEntry(discards.attempts[0]).innerText(), /Discarded/);
   assert.match(
-    await rows().nth(0).innerText(),
-    /0\s+Discarded\s+Discarded\s+Unavailable/,
+    await listEntry(discards.attempts[0]).innerText(),
+    /Best kept so far Unavailable/,
   );
 
   // Project-view changes and unchanged refreshes reuse the same selected-run state.
   await segmentSelect.selectOption(lower.id);
-  await threshold.fill("0");
+  await setThreshold(page, "0%");
   await marker(lower.attempts[1]).click();
   await page
     .getByRole("button", { name: "Current ideas", exact: true })
     .click();
   assert.equal(await chart.count(), 0);
-  await sidebar.getByRole("button", { name: /Win experiment 4:/ }).click();
-  await selected(lower.attempts[3], 3);
+  await attemptList
+    .getByRole("button", {
+      name: /^Select experiment 4 from the attempt list.*New best/,
+    })
+    .click();
+  await selected(lower.attempts[3]);
   await page
     .getByRole("button", { name: "Refresh projects", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Refresh projects", exact: true })
     .waitFor();
-  await selected(lower.attempts[3], 3);
+  await selected(lower.attempts[3]);
   await marker(lower.attempts[1]).click();
-  await selected(lower.attempts[1], 1);
+  await selected(lower.attempts[1]);
   await page.mouse.move(10, 10);
   await page.evaluate(() => window.scrollTo(0, 0));
   if (process.env.VISUALIZER_SCREENSHOT)
@@ -404,7 +447,7 @@ try {
   assert.deepEqual(warnings, []);
   assert.deepEqual(await hashFiles(fixture.directory), before);
   console.log(
-    `S07 ${mode} smoke passed: source-ordered chart; baseline/win/discard/duplicate/failure selection; kept-only trajectory; six isolated segments; advisory JSON/secondary metrics/timestamps; keyboard chart/history; scoped and stale diffs; unchanged files/index/refs; zero browser errors or warnings.`,
+    `S07 ${mode} smoke passed: source-ordered chart; baseline/win/discard/duplicate/failure selection; kept-only trajectory; six isolated segments; advisory JSON/secondary metrics/timestamps; keyboard chart/attempt list; scoped and stale diffs; unchanged files/index/refs; zero browser errors or warnings.`,
   );
 } finally {
   releaseDiff?.();

@@ -12,11 +12,11 @@ export default function CurrentNotes({
 }) {
   return (
     <section className="document-card" aria-label="Current project notes">
-      <p className="eyebrow">CURRENT PROJECT DOCUMENT · {projectName}</p>
       <h2>{name === "ideas" ? "Current ideas" : "Current prompt"}</h2>
       <p className="document-context">
-        These notes reflect the files on disk at the latest refresh and may have
-        changed since a recorded experiment.
+        Current {name === "ideas" ? "ideas" : "prompt"} for {projectName}. These
+        reflect the files on disk at the latest refresh and may have changed
+        since a recorded experiment.
       </p>
       <p className="document-path mono">.auto/{name}.md</p>
       {document.state === "ready" ? (
