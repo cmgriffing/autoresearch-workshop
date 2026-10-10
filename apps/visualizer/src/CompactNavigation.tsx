@@ -1,24 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
-import type { LiveConnection } from "./state";
-
-type DrawerKind = "projects" | "wins";
+import { useAtomValue } from "jotai";
+import {
+  attemptCountsAtom,
+  liveConnectionAtom,
+  projectListAtom,
+  selectedProjectIdAtom,
+} from "./state";
+import { projectStateLabel } from "./ProjectSelector";
+import { connectionLabel } from "./Rail";
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-function connectionLabel(connection: LiveConnection): string {
-  return connection === "connected"
-    ? "Live updates connected"
-    : connection === "disconnected"
-      ? "Live updates disconnected"
-      : connection === "manual"
-        ? "Manual updates"
-        : "Connecting live updates";
-}
-
 function Drawer({
-  kind,
   id,
   label,
   closeLabel,
@@ -26,7 +21,6 @@ function Drawer({
   trigger,
   children,
 }: {
-  kind: DrawerKind;
   id: string;
   label: string;
   closeLabel: string;
@@ -83,14 +77,14 @@ function Drawer({
     <>
       <div
         className="drawer-backdrop"
-        data-testid={`${kind}-drawer-backdrop`}
+        data-testid="session-drawer-backdrop"
         aria-hidden="true"
         onClick={onClose}
       />
       <div
-        className={`drawer-panel drawer-${kind}`}
+        className="drawer-panel"
         id={id}
-        data-testid={`${kind}-drawer`}
+        data-testid="session-drawer"
         role="dialog"
         aria-modal="true"
         aria-label={label}
@@ -115,77 +109,56 @@ function Drawer({
 }
 
 export default function CompactNavigation({
-  projectsCount,
-  winsCount,
-  connection,
-  renderProjects,
-  renderWins,
+  renderRail,
 }: {
-  projectsCount: number;
-  winsCount: number;
-  connection: LiveConnection;
-  renderProjects: (close: () => void) => ReactNode;
-  renderWins: (close: () => void) => ReactNode;
+  renderRail: (close: () => void) => ReactNode;
 }) {
-  const [open, setOpen] = useState<DrawerKind | null>(null);
-  const projectsTrigger = useRef<HTMLButtonElement | null>(null);
-  const winsTrigger = useRef<HTMLButtonElement | null>(null);
-  const close = useCallback(() => setOpen(null), []);
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement | null>(null);
+  const connection = useAtomValue(liveConnectionAtom);
+  const list = useAtomValue(projectListAtom);
+  const selectedId = useAtomValue(selectedProjectIdAtom);
+  const counts = useAtomValue(attemptCountsAtom);
+  const project = list?.projects.find((value) => value.id === selectedId);
+  const close = useCallback(() => setOpen(false), []);
   return (
     <>
       <header className="compact-bar">
-        <p className="compact-status" role="status">
-          <span
-            className={`source-dot source-dot-${connection}`}
-            aria-hidden="true"
-          />
-          {connectionLabel(connection)}
-        </p>
-        <nav className="compact-controls" aria-label="Session navigation">
-          <button
-            type="button"
-            ref={projectsTrigger}
-            aria-expanded={open === "projects"}
-            aria-controls={
-              open === "projects" ? "compact-projects-drawer" : undefined
-            }
-            onClick={() => setOpen(open === "projects" ? null : "projects")}
-          >
-            Projects <span className="compact-count">{projectsCount}</span>
-          </button>
-          <button
-            type="button"
-            ref={winsTrigger}
-            aria-expanded={open === "wins"}
-            aria-controls={open === "wins" ? "compact-wins-drawer" : undefined}
-            onClick={() => setOpen(open === "wins" ? null : "wins")}
-          >
-            Wins <span className="compact-count">{winsCount}</span>
-          </button>
-        </nav>
+        <div className="compact-identity">
+          <p className="compact-project">
+            {project ? project.name : "No project selected"}
+          </p>
+          <p className="compact-status" role="status">
+            <span
+              className={`source-dot source-dot-${connection}`}
+              aria-hidden="true"
+            />
+            {connectionLabel(connection)}
+          </p>
+          {project && (project.stale || project.sourceState !== "ready") ? (
+            <p className="compact-source">{projectStateLabel(project)}</p>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="compact-trigger"
+          ref={trigger}
+          aria-expanded={open}
+          aria-controls={open ? "compact-session-drawer" : undefined}
+          onClick={() => setOpen((value) => !value)}
+        >
+          Session <span className="compact-count">{counts.all}</span>
+        </button>
       </header>
-      {open === "projects" ? (
+      {open ? (
         <Drawer
-          kind="projects"
-          id="compact-projects-drawer"
-          label="Projects"
-          closeLabel="Close projects"
+          id="compact-session-drawer"
+          label="Session"
+          closeLabel="Close session"
           onClose={close}
-          trigger={projectsTrigger}
+          trigger={trigger}
         >
-          {renderProjects(close)}
-        </Drawer>
-      ) : null}
-      {open === "wins" ? (
-        <Drawer
-          kind="wins"
-          id="compact-wins-drawer"
-          label="Wins"
-          closeLabel="Close wins"
-          onClose={close}
-          trigger={winsTrigger}
-        >
-          {renderWins(close)}
+          {renderRail(close)}
         </Drawer>
       ) : null}
     </>

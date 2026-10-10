@@ -35,10 +35,7 @@ export default function DiffPanel({ diff }: { diff: DiffLoadState | null }) {
       aria-busy={!diff || diff.status === "loading"}
     >
       <div className="diff-heading">
-        <div>
-          <p className="eyebrow">RECORDED GIT HISTORY</p>
-          <h2>{comparison === "parent" ? "Parent diff" : "Baseline diff"}</h2>
-        </div>
+        <h2>{comparison === "parent" ? "Parent diff" : "Baseline diff"}</h2>
         {value ? (
           <span className={`diff-state diff-state-${value.state}`}>
             {value.state}

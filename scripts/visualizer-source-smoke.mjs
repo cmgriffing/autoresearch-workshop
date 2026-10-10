@@ -47,6 +47,17 @@ async function waitReady(url) {
   }
   throw new Error(children.map((entry) => entry.output()).join("\n"));
 }
+async function selectProject(page, name) {
+  const selector = page.getByRole("combobox", { name: /^Project/ });
+  await selector.click();
+  await page
+    .getByRole("option", {
+      name,
+      ...(typeof name === "string" ? { exact: true } : {}),
+    })
+    .first()
+    .click();
+}
 let browser;
 let before = await fingerprintDiscoveryFixture(fixture.directory);
 const assertReadOnly = async () =>
@@ -124,15 +135,15 @@ try {
   await page
     .getByRole("heading", { name: "Resilient source", exact: true })
     .waitFor();
-  const table = page.getByRole("table");
-  assert.equal(await table.locator("tbody tr").count(), 3);
+  const attemptList = page.getByTestId("attempt-list");
+  const entries = () => attemptList.locator(".attempt-entry");
+  assert.equal(await entries().count(), 3);
   await page
     .getByText("Line 5: Invalid JSON record.", { exact: true })
     .waitFor();
   await page.getByText(/Line 8: Secondary metric bad/).waitFor();
   const duplicate = page.getByRole("button", {
-    name: "Select experiment 1 from history",
-    exact: true,
+    name: /^Select experiment 1 from the attempt list/,
   });
   assert.equal(await duplicate.count(), 2);
   await duplicate.nth(0).click();
@@ -153,8 +164,7 @@ try {
     .waitFor();
   await page
     .getByRole("button", {
-      name: "Select experiment 9 from history",
-      exact: true,
+      name: /^Select experiment 9 from the attempt list/,
     })
     .click();
   await page
@@ -162,7 +172,7 @@ try {
     .getByText("Crashed", { exact: true })
     .waitFor();
   assert.equal(
-    await page.getByRole("button", { name: /^Win experiment/ }).count(),
+    await attemptList.getByRole("button", { name: /New best/ }).count(),
     1,
   );
   await duplicate.nth(1).click();
@@ -192,15 +202,17 @@ try {
   const partial = await refresh();
   await page.getByText(/Line 10: Trailing record is incomplete/).waitFor();
   assert.deepEqual(partial.runs, initial.runs);
-  assert.equal(await table.locator("tbody tr").count(), 3);
+  assert.equal(await entries().count(), 3);
   assert.equal(await duplicate.nth(1).getAttribute("aria-pressed"), "true");
   const completedSource = `${fixture.source}\n${JSON.stringify({ type: "run", run: 3, metric: 7, status: "keep", description: "Completed tail" })}`;
   await mutate(() => writeFile(fixture.logPath, completedSource));
   const completed = await refresh();
-  await page.getByRole("button", { name: /^Win experiment 3:/ }).waitFor();
+  await attemptList
+    .getByRole("button", { name: /^Select experiment 3 from the attempt list/ })
+    .waitFor();
   assert.equal(completed.runs.length, 4);
   assert.deepEqual(completed.runs.slice(0, 3), initial.runs);
-  assert.equal(await table.locator("tbody tr").count(), 4);
+  assert.equal(await entries().count(), 4);
   assert.equal(
     await page.getByText(/Trailing record is incomplete/).count(),
     0,
@@ -223,7 +235,7 @@ try {
     assert.equal(retained.project.stale, true);
     assert.equal(retained.project.revision, completed.project.revision);
     assert.deepEqual(retained.runs, completed.runs);
-    assert.equal(await table.locator("tbody tr").count(), 4);
+    assert.equal(await entries().count(), 4);
     assert.equal(await duplicate.nth(1).getAttribute("aria-pressed"), "true");
     if (state === "limited")
       await page.getByText(/log.jsonl exceeds the 2048-byte limit/).waitFor();
@@ -271,7 +283,11 @@ try {
     );
     assert.equal(response.status, status);
   }
-  await page.getByRole("button", { name: /^Win experiment 1:/ }).click();
+  await attemptList
+    .getByRole("button", {
+      name: /^Select experiment 1 from the attempt list.*New best/,
+    })
+    .click();
   await page.waitForFunction(
     () =>
       document.querySelector('[data-testid="selected-metric"]')?.textContent ===
@@ -287,7 +303,7 @@ try {
   await page
     .getByText("No valid experiments in this session.", { exact: true })
     .waitFor();
-  assert.equal(await table.count(), 0);
+  assert.equal(await entries().count(), 0);
   assert.equal(await page.getByTestId("selected-metric").count(), 0);
   await mutate(() => writeFile(fixture.logPath, ""));
   await refresh();
@@ -298,32 +314,20 @@ try {
     })
     .waitFor();
   assert.equal((await snapshot()).project.stale, false);
-  await page
-    .getByRole("button", {
-      name: `oversized · . · ${fixture.limited}`,
-      exact: true,
-    })
-    .click();
+  await selectProject(page, `oversized · . · ${fixture.limited}`);
   await page
     .getByText("Log exceeds the size limit. No history is available yet.", {
       exact: true,
     })
     .waitFor();
-  assert.equal(await table.count(), 0);
-  await page
-    .getByRole("button", {
-      name: `uninitialized · . · ${fixture.uninitialized}`,
-      exact: true,
-    })
-    .click();
+  assert.equal(await entries().count(), 0);
+  await selectProject(page, `uninitialized · . · ${fixture.uninitialized}`);
   await page.getByText(/Uninitialized session\. No log/).waitFor();
-  await page
-    .getByRole("button", { name: `shared · . · ${fixture.beta}`, exact: true })
-    .click();
+  await selectProject(page, `shared · . · ${fixture.beta}`);
   await page
     .getByRole("heading", { name: "Beta session", exact: true })
     .waitFor();
-  assert.equal(await table.locator("tbody tr").count(), 2);
+  assert.equal(await entries().count(), 2);
   assert.deepEqual(errors, []);
   await assertReadOnly();
   console.log(

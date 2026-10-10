@@ -1,4 +1,5 @@
 import type { RunSnapshot, SegmentSnapshot } from "visualizar-common";
+import { DECISION_LABEL, attemptDecision } from "./attempts";
 
 export default function RunDetails({
   run,
@@ -8,6 +9,11 @@ export default function RunDetails({
   segment: SegmentSnapshot | null;
 }) {
   const point = segment?.attempts.find((value) => value.runId === run.id);
+  const decision = point
+    ? point.status === "crash" || point.status === "checks_failed"
+      ? "Failed attempt · recorded metric excluded from the chart"
+      : DECISION_LABEL[attemptDecision(point)]
+    : "Not recorded in the selected segment";
   const previousBest =
     point && point.attempt > 1
       ? segment?.attempts[point.attempt - 2]?.bestMetric
@@ -26,18 +32,8 @@ export default function RunDetails({
     <div className="run-details">
       <dl className="result-meta">
         <div>
-          <dt>Metric result</dt>
-          <dd>
-            {point?.isBaseline
-              ? "First kept baseline"
-              : point?.isWin
-                ? "New best kept result"
-                : run.status === "keep"
-                  ? "Kept without a new best"
-                  : run.status === "discard"
-                    ? "Discarded attempt"
-                    : "Failed attempt · recorded metric excluded from chart"}
-          </dd>
+          <dt>Decision</dt>
+          <dd>{decision}</dd>
         </div>
         <div>
           <dt>Recorded timestamp (UTC)</dt>

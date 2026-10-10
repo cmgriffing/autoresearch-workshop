@@ -170,20 +170,12 @@ function AttemptChart({ segment }: { segment: SegmentSnapshot }) {
   return (
     <section className="chart-card" aria-labelledby="trajectory-title">
       <div className="chart-heading">
-        <div>
-          <p className="eyebrow">ATTEMPT BY ATTEMPT</p>
-          <h2 id="trajectory-title">Metric trajectory</h2>
-        </div>
-        <span>
-          {segment.metricName}
-          {segment.metricUnit ? ` (${segment.metricUnit})` : ""}
-        </span>
+        <h2 id="trajectory-title">Metric trajectory</h2>
       </div>
       <p className="chart-context">
-        {points.length} attempts in recorded source order ·{" "}
-        {segment.bestDirection === "lower" ? "Lower" : "Higher"} is better.{" "}
-        <a href="#history-title">Full history</a> provides every value and
-        keyboard selection.
+        {points.length} attempts in recorded source order.{" "}
+        <a href="#attempt-list-title">The attempt list</a> provides every
+        recorded metric, decision, and best-kept value with keyboard selection.
       </p>
       {points.length === 0 ? (
         <p className="chart-context">No attempts recorded in this segment.</p>

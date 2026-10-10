@@ -110,14 +110,12 @@ try {
   await page.goto(uiOrigin);
   await page
     .getByRole("button", {
-      name: "Select experiment 2 from history",
-      exact: true,
+      name: /^Select experiment 2 from the attempt list/,
     })
     .click();
   await page
     .getByRole("button", {
-      name: "Select experiment 1 from history",
-      exact: true,
+      name: /^Select experiment 1 from the attempt list/,
     })
     .click();
   const diffRegion = page.getByRole("region", { name: "Historical diff" });
@@ -126,8 +124,7 @@ try {
 
   await page
     .getByRole("button", {
-      name: "Select experiment 2 from history",
-      exact: true,
+      name: /^Select experiment 2 from the attempt list/,
     })
     .click();
   const patch = page.getByRole("code");
@@ -137,8 +134,7 @@ try {
 
   await page
     .getByRole("button", {
-      name: "Select experiment 3 from history",
-      exact: true,
+      name: /^Select experiment 3 from the attempt list/,
     })
     .click();
   await diffRegion.getByText(/No project files changed/).waitFor();
@@ -146,8 +142,7 @@ try {
 
   await page
     .getByRole("button", {
-      name: "Select experiment 4 from history",
-      exact: true,
+      name: /^Select experiment 4 from the attempt list/,
     })
     .click();
   await diffRegion.getByText(/not available/).waitFor();

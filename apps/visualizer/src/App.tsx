@@ -22,12 +22,8 @@ import {
   selectedProjectIdAtom,
   selectedSegmentIdAtom,
   selectedSegmentAtom,
-  segmentRunsAtom,
-  selectedRunIdAtom,
   selectedRunAtom,
-  selectResultAtom,
   mainViewAtom,
-  filteredWinsAtom,
   selectSegmentAtom,
   diffLoadAtom,
   selectedDiffAtom,
@@ -37,9 +33,8 @@ import {
 } from "./state";
 import CompactNavigation from "./CompactNavigation";
 import DiffPanel from "./DiffPanel";
-import ProjectPane from "./ProjectPane";
+import Rail from "./Rail";
 import RunDetails from "./RunDetails";
-import WinsPane from "./WinsPane";
 import { useMediaQuery } from "./useMediaQuery";
 
 const CurrentNotes = lazy(() => import("./CurrentNotes"));
@@ -242,25 +237,52 @@ function useSelectedDiff(
   }, [run, setDiff, snapshot, comparison, includeAuto]);
 }
 
+function useReviewHeaderOffset() {
+  const paneRef = useRef<HTMLElement | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const pane = paneRef.current;
+    const header = headerRef.current;
+    if (!pane || !header) return;
+    const update = () =>
+      pane.style.setProperty(
+        "--review-header-offset",
+        `${Math.round(header.getBoundingClientRect().height)}px`,
+      );
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+  return { paneRef, headerRef };
+}
+
 export function App() {
   const { refresh, refreshing, refreshError } = useProjectData();
-  const list = useAtomValue(projectListAtom);
-  const connection = useAtomValue(liveConnectionAtom);
   const narrow = useMediaQuery("(max-width: 960px)");
   const snapshot = useAtomValue(selectedProjectAtom);
   const segmentId = useAtomValue(selectedSegmentIdAtom);
   const selectionNotice = useAtomValue(selectionNoticeAtom);
   const segment = useAtomValue(selectedSegmentAtom);
-  const segmentRuns = useAtomValue(segmentRunsAtom);
-  const filteredWins = useAtomValue(filteredWinsAtom);
   const selectSegment = useSetAtom(selectSegmentAtom);
-  const runId = useAtomValue(selectedRunIdAtom);
-  const selectResult = useSetAtom(selectResultAtom);
-  const [mainView, setMainView] = useAtom(mainViewAtom);
   const run = useAtomValue(selectedRunAtom);
   useSelectedDiff(snapshot, run);
   const diff = useAtomValue(selectedDiffAtom);
+  const [mainView, setMainView] = useAtom(mainViewAtom);
   const metric = segment ?? snapshot?.metricConfig;
+  const { paneRef, headerRef } = useReviewHeaderOffset();
+  const firstView = useRef(true);
+  useEffect(() => {
+    if (firstView.current) {
+      firstView.current = false;
+      return;
+    }
+    document
+      .getElementById(
+        mainView === "results" ? "result-review" : "current-notes",
+      )
+      ?.scrollIntoView({ block: "start" });
+  }, [mainView]);
   const formatPercentage = (value: number | null) =>
     value === null ? "Unavailable" : `${value.toFixed(2)}%`;
   return (
@@ -270,65 +292,36 @@ export function App() {
       </a>
       {narrow ? (
         <CompactNavigation
-          projectsCount={list?.projects.length ?? 0}
-          winsCount={filteredWins.length}
-          connection={connection}
-          renderProjects={(close) => (
-            <ProjectPane
+          renderRail={(close) => (
+            <Rail
               refresh={refresh}
               refreshing={refreshing}
               refreshError={refreshError}
               onNavigate={close}
-              showConnection={false}
             />
           )}
-          renderWins={(close) => <WinsPane onNavigate={close} />}
         />
       ) : (
-        <>
-          <ProjectPane
-            refresh={refresh}
-            refreshing={refreshing}
-            refreshError={refreshError}
-          />
-          <WinsPane />
-        </>
+        <Rail
+          refresh={refresh}
+          refreshing={refreshing}
+          refreshError={refreshError}
+        />
       )}
-      <main id="review" tabIndex={-1} className="review-pane">
-        <header className="review-header">
-          <p className="eyebrow">
-            PROJECT / {snapshot?.project.name ?? "SELECT A PROJECT"}
-          </p>
-          <span className="file-label">
-            .auto / {mainView === "results" ? "log.jsonl" : `${mainView}.md`}
-          </span>
-        </header>
-        <div className="review-content">
-          <div className="session-title">
-            <p className="eyebrow">EXPERIMENT NOTEBOOK</p>
+      <main id="review" tabIndex={-1} className="review-pane" ref={paneRef}>
+        <header className="review-header" ref={headerRef}>
+          <div className="review-heading">
             <h1>{metric?.name ?? "Review a local session"}</h1>
-            <p>
+            <p className="review-subtitle">
               {metric
-                ? `${metric.metricName} · ${metric.bestDirection === "lower" ? "Lower" : "Higher"} is better`
+                ? `${metric.metricName}${
+                    metric.metricUnit ? ` (${metric.metricUnit})` : ""
+                  } · ${
+                    metric.bestDirection === "lower" ? "Lower" : "Higher"
+                  } is better`
                 : "Choose a project and an experiment to inspect its recorded result."}
             </p>
           </div>
-          {selectionNotice ? (
-            <p className="diagnostic" role="status">
-              {selectionNotice}
-            </p>
-          ) : null}
-          {snapshot?.project.stale ? (
-            <p className="diagnostic" role="status">
-              Stale data: showing the last successfully read project data.
-              Updates resume when the source or root recovers.
-            </p>
-          ) : snapshot?.project.sourceState === "missing" ? (
-            <p className="diagnostic" role="status">
-              Uninitialized session. No log.jsonl has been recorded; refresh
-              after the first experiment.
-            </p>
-          ) : null}
           {snapshot ? (
             <nav className="view-navigation" aria-label="Project views">
               <button
@@ -354,6 +347,72 @@ export function App() {
               </button>
             </nav>
           ) : null}
+        </header>
+        <div className="review-content">
+          {selectionNotice ? (
+            <p className="diagnostic" role="status">
+              {selectionNotice}
+            </p>
+          ) : null}
+          {snapshot?.project.stale ? (
+            <p className="diagnostic" role="status">
+              Stale data: showing the last successfully read project data.
+              Updates resume when the source or root recovers.
+            </p>
+          ) : snapshot?.project.sourceState === "missing" ? (
+            <p className="diagnostic" role="status">
+              Uninitialized session. No log.jsonl has been recorded; refresh
+              after the first experiment.
+            </p>
+          ) : null}
+          {snapshot && snapshot.segments.length > 0 ? (
+            <section className="segment-summary" aria-label="Metric segment">
+              <label>
+                Metric segment
+                <select
+                  value={segmentId ?? ""}
+                  onChange={(event) => selectSegment(event.target.value)}
+                >
+                  {snapshot.segments.map((value) => (
+                    <option value={value.id} key={value.id}>
+                      {value.name} · {value.metricName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {segment ? (
+                <dl>
+                  <div>
+                    <dt>First kept baseline</dt>
+                    <dd className="mono">
+                      {segment.baselineMetric ?? "Unavailable"}{" "}
+                      {segment.metricUnit}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Best</dt>
+                    <dd className="mono">
+                      {segment.bestMetric ?? "Unavailable"} {segment.metricUnit}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Cumulative improvement</dt>
+                    <dd>
+                      {formatPercentage(
+                        segment.cumulativeImprovement?.percentage ?? null,
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              ) : null}
+            </section>
+          ) : null}
+          {snapshot?.project.diagnostics.map((diagnostic, index) => (
+            <p className="diagnostic" role="status" key={index}>
+              {diagnostic.sourceLine ? `Line ${diagnostic.sourceLine}: ` : ""}
+              {diagnostic.message}
+            </p>
+          ))}
           <div id="current-notes" hidden={mainView === "results"}>
             {snapshot && mainView !== "results" ? (
               <Suspense fallback={<p role="status">Loading document view…</p>}>
@@ -366,62 +425,6 @@ export function App() {
             ) : null}
           </div>
           <div id="result-review" hidden={mainView !== "results"}>
-            {snapshot && snapshot.segments.length > 0 ? (
-              <section className="segment-summary" aria-label="Metric segment">
-                <label>
-                  Metric segment
-                  <select
-                    value={segmentId ?? ""}
-                    onChange={(event) => selectSegment(event.target.value)}
-                  >
-                    {snapshot.segments.map((value) => (
-                      <option value={value.id} key={value.id}>
-                        {value.name} · {value.metricName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {segment ? (
-                  <dl>
-                    <div>
-                      <dt>Direction</dt>
-                      <dd>
-                        {segment.bestDirection === "lower" ? "Lower" : "Higher"}
-                        {" is better"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>First kept baseline</dt>
-                      <dd className="mono">
-                        {segment.baselineMetric ?? "Unavailable"}{" "}
-                        {segment.metricUnit}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Best</dt>
-                      <dd className="mono">
-                        {segment.bestMetric ?? "Unavailable"}{" "}
-                        {segment.metricUnit}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Cumulative improvement</dt>
-                      <dd>
-                        {formatPercentage(
-                          segment.cumulativeImprovement?.percentage ?? null,
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
-                ) : null}
-              </section>
-            ) : null}
-            {snapshot?.project.diagnostics.map((diagnostic, index) => (
-              <p className="diagnostic" role="status" key={index}>
-                {diagnostic.sourceLine ? `Line ${diagnostic.sourceLine}: ` : ""}
-                {diagnostic.message}
-              </p>
-            ))}
             {segment && mainView === "results" ? (
               <Suspense
                 fallback={
@@ -443,11 +446,15 @@ export function App() {
                     <h2>Experiment {String(run.run).padStart(2, "0")}</h2>
                     <Status status={run.status} />
                   </div>
-                  <p className="eyebrow">RECORDED {metric?.metricName}</p>
-                  <p className="metric-value" data-testid="selected-metric">
-                    {run.metric}
-                    <span>{metric?.metricUnit}</span>
-                  </p>
+                  <dl className="recorded-metric">
+                    <dt>Recorded metric</dt>
+                    <dd className="metric-value" data-testid="selected-metric">
+                      {run.metric}
+                      {metric?.metricUnit ? (
+                        <span>{metric.metricUnit}</span>
+                      ) : null}
+                    </dd>
+                  </dl>
                   <div className="description">
                     <h3>Description</h3>
                     <p>{run.description || "No description recorded."}</p>
@@ -468,7 +475,7 @@ export function App() {
               </>
             ) : (
               <div className="selection-empty">
-                <span aria-hidden="true">↖</span>
+                <span aria-hidden="true">←</span>
                 <h2>
                   {snapshot?.runs.length === 0
                     ? "No experiments available"
@@ -477,82 +484,10 @@ export function App() {
                 <p>
                   {snapshot?.runs.length === 0
                     ? "Review the source diagnostics and refresh when results are available."
-                    : "Inspect its metric, decision, and recorded description."}
+                    : "Choose any attempt in the rail's attempt list to inspect its metric, decision, and recorded description."}
                 </p>
               </div>
             )}
-            {snapshot && segmentRuns.length > 0 ? (
-              <section
-                className="history-section"
-                aria-labelledby="history-title"
-              >
-                <div className="history-heading">
-                  <h2 id="history-title">Full history</h2>
-                  <span>{segmentRuns.length} attempts in this segment</span>
-                </div>
-                <div className="history-scroll">
-                  <table>
-                    <caption className="sr-only">
-                      Every valid experiment in recorded source order
-                    </caption>
-                    <thead>
-                      <tr>
-                        <th>Experiment</th>
-                        <th>
-                          {metric?.metricName}
-                          {metric?.metricUnit ? ` (${metric.metricUnit})` : ""}
-                        </th>
-                        <th>Decision</th>
-                        <th>Metric result</th>
-                        <th>Best kept so far</th>
-                        <th>Description</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {segmentRuns.map((result, index) => (
-                        <tr
-                          key={result.id}
-                          className={result.id === runId ? "selected-row" : ""}
-                        >
-                          <td>
-                            <button
-                              aria-label={`Select experiment ${result.run} from history`}
-                              aria-pressed={result.id === runId}
-                              onClick={() => selectResult(result.id)}
-                            >
-                              {String(result.run).padStart(2, "0")}{" "}
-                              <span aria-hidden="true">↗</span>
-                            </button>
-                          </td>
-                          <td className="mono">{result.metric}</td>
-                          <td>
-                            <Status status={result.status} />
-                          </td>
-                          <td>
-                            {segment?.attempts[index]?.isBaseline
-                              ? "First kept baseline"
-                              : segment?.attempts[index]?.isWin
-                                ? "New best"
-                                : result.status === "keep"
-                                  ? "Kept"
-                                  : result.status === "discard"
-                                    ? "Discarded"
-                                    : "Failed · not plotted"}
-                          </td>
-                          <td className="mono">
-                            {segment?.attempts[index]?.bestMetric ??
-                              "Unavailable"}
-                          </td>
-                          <td>
-                            {result.description || "No description recorded."}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
-            ) : null}
           </div>
           {snapshot ? (
             <footer className="review-footer">

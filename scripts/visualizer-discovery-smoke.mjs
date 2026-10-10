@@ -59,6 +59,24 @@ function deferred() {
   });
   return { promise, resolve };
 }
+async function selectProject(page, name) {
+  const selector = page.getByRole("combobox", { name: /^Project/ });
+  await selector.click();
+  await page
+    .getByRole("option", {
+      name,
+      ...(typeof name === "string" ? { exact: true } : {}),
+    })
+    .first()
+    .click();
+}
+async function selectProjectByKeyboard(page, text) {
+  const selector = page.getByRole("combobox", { name: /^Project/ });
+  await selector.focus();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.type(text);
+  await page.keyboard.press("Enter");
+}
 let browser;
 let before = await fingerprintDiscoveryFixture(fixture.directory);
 const assertReadOnly = async () =>
@@ -119,38 +137,40 @@ try {
   await page
     .getByRole("heading", { name: "Parent session", exact: true })
     .waitFor();
-  const group = page.getByRole("region", {
+  const projectSelector = page.getByRole("combobox", { name: /^Project/ });
+  await projectSelector.click();
+  const listbox = page.getByRole("listbox", { name: "Projects" });
+  const group = listbox.getByRole("group", {
     name: `Root ${fixture.workspace}`,
     exact: true,
   });
-  const alphaButton = group.getByRole("button", {
-    name: `shared · a/shared · ${fixture.workspace}`,
-    exact: true,
-  });
-  const betaButton = group.getByRole("button", {
-    name: `shared · b/shared · ${fixture.workspace}`,
-    exact: true,
-  });
-  assert.equal(await page.locator(".root-group").count(), 7);
-  assert.equal(await group.getByRole("button").count(), 5);
+  assert.equal(await listbox.getByRole("group").count(), 7);
+  assert.equal(await group.getByRole("option").count(), 5);
   assert.equal(
-    await page
+    await listbox
       .getByText("No sessions found in this root.", { exact: true })
       .count(),
     2,
   );
-  assert.equal(await page.getByText(/Cannot open root/).count(), 2);
+  assert.equal(await listbox.getByText(/Cannot open root/).count(), 2);
   assert.equal(
-    await page.getByRole("button", { name: /hidden|external|cycle/ }).count(),
+    await listbox
+      .getByRole("option", { name: /hidden|external|cycle/ })
+      .count(),
     0,
   );
-  await alphaButton.focus();
-  await page.keyboard.press("Enter");
+  await page.keyboard.press("Escape");
+  assert.equal(await group.count(), 0);
+  await selectProject(page, `shared · a/shared · ${fixture.workspace}`);
   await page
     .getByRole("heading", { name: "Alpha session", exact: true })
     .waitFor();
-  assert.equal(await alphaButton.getAttribute("aria-pressed"), "true");
-  assert.equal(await page.getByRole("table").locator("tbody tr").count(), 2);
+  assert.match(
+    await page.locator(".project-meta-facts").innerText(),
+    /a\/shared/,
+  );
+  const attemptList = page.getByTestId("attempt-list");
+  assert.equal(await attemptList.locator(".attempt-entry").count(), 2);
 
   // Hold a real API response until after switching to another project's result.
   const diffStarted = deferred();
@@ -168,13 +188,17 @@ try {
       diffFinished.resolve();
     },
   );
-  await page.getByRole("button", { name: /Win experiment 2:/ }).click();
+  await attemptList
+    .getByRole("button", { name: /^Select experiment 2 from the attempt list/ })
+    .click();
   await diffStarted.promise;
-  await betaButton.click();
+  await selectProject(page, `shared · b/shared · ${fixture.workspace}`);
   await page
     .getByRole("heading", { name: "Beta session", exact: true })
     .waitFor();
-  await page.getByRole("button", { name: /Win experiment 2:/ }).click();
+  await attemptList
+    .getByRole("button", { name: /^Select experiment 2 from the attempt list/ })
+    .click();
   const metric = page.getByTestId("selected-metric");
   await page.waitForFunction(
     () =>
@@ -201,9 +225,9 @@ try {
     await route.fulfill({ response });
     snapshotFinished.resolve();
   });
-  await alphaButton.click();
+  await selectProject(page, `shared · a/shared · ${fixture.workspace}`);
   await snapshotStarted.promise;
-  await betaButton.click();
+  await selectProject(page, `shared · b/shared · ${fixture.workspace}`);
   await page
     .getByRole("heading", { name: "Beta session", exact: true })
     .waitFor();
@@ -215,14 +239,21 @@ try {
       .count(),
     0,
   );
-  assert.equal(await betaButton.getAttribute("aria-pressed"), "true");
+  assert.match(
+    await page.locator(".project-meta-facts").innerText(),
+    /b\/shared/,
+  );
   await page.unroute(`**/api/projects/${alpha.id}`);
-  await group.getByRole("button", { name: /^child ·/ }).click();
+  await selectProject(page, `child · a/shared/child · ${fixture.workspace}`);
   await page
     .getByRole("heading", { name: "Nested session", exact: true })
     .waitFor();
-  await group.getByRole("button", { name: /^uninitialized ·/ }).click();
+  await selectProjectByKeyboard(page, "uninitialized");
   await page.getByText(/Uninitialized session\. No log/).waitFor();
+  assert.match(
+    await page.locator(".project-meta-facts").innerText(),
+    /uninitialized/,
+  );
   assert.equal(await page.getByRole("table").count(), 0);
   await assertReadOnly();
 
@@ -235,9 +266,7 @@ try {
     exact: true,
   });
   await refresh.click();
-  const newButton = group.getByRole("button", { name: /^new-session ·/ });
-  await newButton.waitFor();
-  await newButton.click();
+  await selectProject(page, /^new-session ·/);
   await page.getByText(/Uninitialized session\. No log/).waitFor();
   await assertReadOnly();
   await writeSession(added, "New initialized session", [5, 4]);
@@ -246,7 +275,9 @@ try {
   await page
     .getByRole("heading", { name: "New initialized session", exact: true })
     .waitFor();
-  await page.getByRole("button", { name: /Win experiment 2:/ }).click();
+  await attemptList
+    .getByRole("button", { name: /^Select experiment 2 from the attempt list/ })
+    .click();
   await page
     .getByRole("heading", { name: "Experiment 02", exact: true })
     .waitFor();
@@ -259,10 +290,14 @@ try {
   );
   before = await fingerprintDiscoveryFixture(fixture.directory);
   await refresh.click();
-  await page.getByRole("button", { name: /Win experiment 3:/ }).waitFor();
+  await attemptList
+    .getByRole("button", { name: /^Select experiment 3 from the attempt list/ })
+    .waitFor();
   assert.equal(
-    await page
-      .getByRole("button", { name: /Win experiment 2:/ })
+    await attemptList
+      .getByRole("button", {
+        name: /^Select experiment 2 from the attempt list/,
+      })
       .getAttribute("aria-pressed"),
     "true",
   );
@@ -272,7 +307,7 @@ try {
       .count(),
     1,
   );
-  assert.equal(await page.getByRole("table").locator("tbody tr").count(), 3);
+  assert.equal(await attemptList.locator(".attempt-entry").count(), 3);
   await assertReadOnly();
   if (process.env.VISUALIZER_SCREENSHOT)
     await page.screenshot({
@@ -291,7 +326,12 @@ try {
   await page
     .getByRole("heading", { name: "Parent session", exact: true })
     .waitFor();
-  assert.equal(await newButton.count(), 0);
+  await projectSelector.click();
+  assert.equal(
+    await page.getByRole("option", { name: /^new-session/ }).count(),
+    0,
+  );
+  await page.keyboard.press("Escape");
   await assertReadOnly();
 
   // A fresh browser load verifies the global no-project state after rediscovery.

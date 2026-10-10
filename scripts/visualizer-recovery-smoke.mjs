@@ -116,6 +116,22 @@ async function waitReady(url) {
   }
   throw new Error(children.map((entry) => entry.output()).join("\n"));
 }
+async function selectProject(page, name) {
+  const selector = page.getByRole("combobox", { name: /^Project/ });
+  await selector.click();
+  await page
+    .getByRole("option", {
+      name,
+      ...(typeof name === "string" ? { exact: true } : {}),
+    })
+    .first()
+    .click();
+}
+const assertSelectedRoot = async (page, expected) =>
+  assert.ok(
+    (await page.locator(".project-meta-facts").innerText()).includes(expected),
+    `expected ${expected} to be the selected project root`,
+  );
 const startApi = () => start(process.execPath, [runnerPath]);
 let api;
 let browser;
@@ -142,18 +158,13 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(uiOrigin);
   await page.getByText("Live updates connected", { exact: true }).waitFor();
-  const alphaButton = page.getByRole("button", {
-    name: `shared · shared · ${root}`,
-    exact: true,
-  });
-  await alphaButton.click();
+  await selectProject(page, `shared · shared · ${root}`);
   await page
     .getByRole("heading", { name: "Alpha session", exact: true })
     .waitFor();
   await page.getByText(/Session watcher unavailable; periodic/).waitFor();
-  const baseline = page.getByRole("button", {
-    name: "Baseline experiment 1",
-    exact: true,
+  const baseline = page.getByTestId("attempt-list").getByRole("button", {
+    name: /^Select experiment 1 from the attempt list/,
   });
   await baseline.click();
   assert.deepEqual(
@@ -169,8 +180,7 @@ try {
   let fingerprint = await fingerprintDiscoveryFixture(fixture.workspace);
   await page
     .getByRole("button", {
-      name: "Select experiment 3 from history",
-      exact: true,
+      name: /^Select experiment 3 from the attempt list/,
     })
     .waitFor();
   assert.equal(await baseline.getAttribute("aria-pressed"), "true");
@@ -185,26 +195,33 @@ try {
 
   const newProject = join(fixture.alpha, "new-session");
   await mkdir(join(newProject, ".auto"), { recursive: true });
-  const newButton = page.getByRole("button", {
-    name: `new-session · shared/new-session · ${root}`,
-    exact: true,
-  });
-  await newButton.waitFor();
+  const newOptionName = `new-session · shared/new-session · ${root}`;
+  await page.getByRole("combobox", { name: /^Project/ }).click();
+  await page
+    .getByRole("option", { name: newOptionName, exact: true })
+    .waitFor();
   assert.equal(await baseline.getAttribute("aria-pressed"), "true");
-  await newButton.click();
+  await page.getByRole("option", { name: newOptionName, exact: true }).click();
   await page.getByText(/Uninitialized session. No log.jsonl/).waitFor();
   await writeSession(newProject, "New periodic session", [8, 6]);
   await page
     .getByRole("heading", { name: "New periodic session", exact: true })
     .waitFor();
-  await page.getByRole("button", { name: /^Win experiment 2:/ }).click();
+  await page
+    .getByTestId("attempt-list")
+    .getByRole("button", { name: /^Select experiment 2 from the attempt list/ })
+    .click();
   await rm(join(newProject, ".auto"), { recursive: true });
-  await newButton.waitFor({ state: "detached" });
+  await page.getByRole("combobox", { name: /^Project/ }).click();
+  await page
+    .getByRole("option", { name: newOptionName, exact: true })
+    .waitFor({ state: "detached" });
+  await page.keyboard.press("Escape");
   await page.getByText(/selected project is no longer discovered/i).waitFor();
   await page
     .getByRole("heading", { name: "Experiment 02", exact: true })
     .waitFor({ state: "detached" });
-  await alphaButton.click();
+  await selectProject(page, `shared · shared · ${root}`);
   await page
     .getByRole("heading", { name: "Alpha session", exact: true })
     .waitFor();
@@ -224,8 +241,10 @@ try {
   await page
     .getByText(/Stale data: showing the last successfully read project data/)
     .waitFor();
+  await page.getByRole("combobox", { name: /^Project/ }).click();
   await page.getByText(/Controlled unreadable root/).waitFor();
-  assert.equal(await alphaButton.getAttribute("aria-pressed"), "true");
+  await page.keyboard.press("Escape");
+  await assertSelectedRoot(page, root);
   assert.equal(await baseline.getAttribute("aria-pressed"), "true");
   await page
     .getByRole("heading", { name: "Notes recovered by polling", exact: true })
@@ -236,16 +255,13 @@ try {
     await fingerprintDiscoveryFixture(fixture.workspace),
     fingerprint,
   );
-  const healthy = page.getByRole("button", {
-    name: `shared · shared · ${healthyRoot}`,
-    exact: true,
-  });
-  await healthy.click();
+  const healthy = `shared · shared · ${healthyRoot}`;
+  await selectProject(page, healthy);
   await page
     .getByRole("heading", { name: "Beta session", exact: true })
     .waitFor();
   assert.equal(await page.getByText(/Stale data: showing/).count(), 0);
-  await alphaButton.click();
+  await selectProject(page, `shared · shared · ${root}`);
   await baseline.click();
   await setControls({ failRoot: null });
   await page.getByText(/Stale data: showing/).waitFor({ state: "detached" });
@@ -255,7 +271,7 @@ try {
   // recover, then delete the session while the root scans successfully.
   await rename(root, `${root}.away`);
   await page.getByText(/Stale data: showing/).waitFor();
-  assert.equal(await alphaButton.count(), 1);
+  await assertSelectedRoot(page, root);
   await rename(`${root}.away`, root);
   await page.getByText(/Stale data: showing/).waitFor({ state: "detached" });
   assert.equal(await baseline.getAttribute("aria-pressed"), "true");
@@ -278,8 +294,7 @@ try {
   await page.getByText("Live updates connected", { exact: true }).waitFor();
   await page
     .getByRole("button", {
-      name: "Select experiment 4 from history",
-      exact: true,
+      name: /^Select experiment 4 from the attempt list/,
     })
     .waitFor();
   assert.equal(await baseline.getAttribute("aria-pressed"), "true");
@@ -289,8 +304,12 @@ try {
     (project) => project.rootPath === root && project.relativePath === "shared",
   );
   await rm(join(fixture.alpha, ".auto"), { recursive: true });
-  await alphaButton.waitFor({ state: "detached" });
   await page.getByText(/selected project is no longer discovered/i).waitFor();
+  await page.getByRole("combobox", { name: /^Project/ }).click();
+  await page
+    .getByRole("option", { name: `shared · shared · ${root}`, exact: true })
+    .waitFor({ state: "detached" });
+  await page.keyboard.press("Escape");
   assert.equal(
     (await fetch(`${uiOrigin}/api/projects/${alpha.id}`)).status,
     404,

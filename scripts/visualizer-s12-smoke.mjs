@@ -34,12 +34,14 @@ function gitFingerprint() {
     execFileSync("git", ["--no-optional-locks", "-C", checksumPath, ...args], {
       encoding: "utf8",
     }).trim();
+  // Supports linked worktrees, where .git is a file rather than a directory.
+  const gitDir = git("rev-parse", "--absolute-git-dir");
   return {
     head: git("rev-parse", "HEAD"),
     status: git("status", "--porcelain"),
     refs: git("for-each-ref", "--format=%(refname) %(objectname)"),
     index: createHash("sha256")
-      .update(readFileSync(join(workspace, ".git", "index")))
+      .update(readFileSync(join(gitDir, "index")))
       .digest("hex"),
   };
 }
@@ -87,6 +89,20 @@ async function stop(child) {
       resolve();
     });
   });
+}
+
+async function setThreshold(page, prefix, limit = 40) {
+  const slider = page.getByRole("slider", {
+    name: "Minimum win improvement percentage",
+  });
+  await slider.focus();
+  await page.keyboard.press("Home");
+  for (let step = 0; step <= limit; step += 1) {
+    const text = await page.getByTestId("threshold-readout").innerText();
+    if (text.startsWith(prefix)) return;
+    await page.keyboard.press("ArrowRight");
+  }
+  throw new Error(`Threshold never reached ${prefix}`);
 }
 
 let browser;
@@ -232,9 +248,10 @@ try {
       apiRequests.push(request.url());
   });
   await page.goto(uiOrigin);
-  const projectButton = page.getByRole("button", { name: /^checksum · \./ });
-  await projectButton.waitFor();
-  await projectButton.click();
+  const projectSelector = page.getByRole("combobox", { name: /^Project/ });
+  await projectSelector.waitFor();
+  await projectSelector.click();
+  await page.getByRole("option", { name: /^checksum · \./ }).click();
   await page
     .getByRole("heading", { name: "Optimize checksum hot loop", exact: true })
     .waitFor();
@@ -246,33 +263,42 @@ try {
   assert.match(summaryText, /best\s+3\.84 ms/i);
   assert.match(summaryText, /79\.07%/);
 
-  const wins = page.getByRole("complementary", { name: "Wins" });
-  await wins.getByRole("button", { name: /^Win experiment 2:/ }).waitFor();
+  const attemptList = page.getByTestId("attempt-list");
+  await attemptList
+    .getByRole("button", {
+      name: /^Select experiment 2 from the attempt list.*New best/,
+    })
+    .waitFor();
   assert.equal(
-    await wins.getByRole("button", { name: /^Win experiment/ }).count(),
+    await attemptList.getByRole("button", { name: /New best/ }).count(),
     7,
   );
   assert.equal(
-    await wins.getByRole("button", { name: "Baseline experiment 1" }).count(),
+    await attemptList
+      .getByRole("button", { name: /First kept baseline/ })
+      .count(),
     1,
   );
-  const threshold = page.getByRole("spinbutton", {
-    name: "Minimum win improvement percentage",
-  });
-  await threshold.fill("1");
+  await setThreshold(page, "1.0%");
   assert.equal(
-    await wins.getByRole("button", { name: /^Win experiment/ }).count(),
+    await attemptList.getByRole("button", { name: /New best/ }).count(),
     3,
   );
   for (const run of [2, 4, 8])
     assert.equal(
-      await wins
-        .getByRole("button", { name: new RegExp(`^Win experiment ${run}:`) })
+      await attemptList
+        .getByRole("button", {
+          name: new RegExp(`^Select experiment ${run} from the attempt list`),
+        })
         .count(),
       1,
     );
   assert.equal(
-    await wins.getByRole("button", { name: /^Win experiment 7:/ }).count(),
+    await attemptList
+      .getByRole("button", {
+        name: /^Select experiment 7 from the attempt list/,
+      })
+      .count(),
     0,
   );
 
@@ -283,31 +309,34 @@ try {
     .getByRole("heading", { name: "Experiment 08", exact: true })
     .waitFor();
   const details = page.getByRole("region", { name: "Selected experiment" });
-  assert.match(await details.innerText(), /New best kept result/);
+  assert.match(await details.innerText(), /New best/);
   assert.equal(
-    await wins
-      .getByRole("button", { name: /^Win experiment 8:/ })
+    await attemptList
+      .locator(`.attempt-entry[data-run-id="${runByNumber(8).id}"]`)
       .getAttribute("aria-pressed"),
     "true",
   );
 
-  // History selection exposes a discarded attempt without labeling it a win.
-  await page
+  // Attempt-list selection exposes a discarded attempt without labeling it a win.
+  await attemptList
     .getByRole("button", {
-      name: "Select experiment 3 from history",
-      exact: true,
+      name: /^Select experiment 3 from the attempt list/,
     })
     .click();
   await page
     .getByRole("heading", { name: "Experiment 03", exact: true })
     .waitFor();
   const discardedText = await details.innerText();
-  assert.match(discardedText, /Discarded attempt/);
-  assert.doesNotMatch(discardedText, /New best kept result/);
+  assert.match(discardedText, /Discarded/);
+  assert.doesNotMatch(discardedText, /New best/);
   assert.match(discardedText, /Previous best kept metric\s+4\.569 ms/i);
 
   // Parent and baseline comparisons with actual resolved references.
-  await wins.getByRole("button", { name: /^Win experiment 2:/ }).click();
+  await attemptList
+    .getByRole("button", {
+      name: /^Select experiment 2 from the attempt list.*New best/,
+    })
+    .click();
   await page
     .getByRole("heading", { name: "Experiment 02", exact: true })
     .waitFor();
@@ -342,7 +371,9 @@ try {
   await diff.getByRole("heading", { name: "Parent diff" }).waitFor();
 
   // Logs-only parent comparison: empty by default, visible with artifacts.
-  await wins.getByRole("button", { name: "Baseline experiment 1" }).click();
+  await attemptList
+    .getByRole("button", { name: /First kept baseline/ })
+    .click();
   await page
     .getByRole("heading", { name: "Experiment 01", exact: true })
     .waitFor();
@@ -371,7 +402,7 @@ try {
   const notes = page.getByRole("region", { name: "Current project notes" });
   await notes.getByRole("heading", { name: "Current ideas" }).waitFor();
   assert.match(await notes.innerText(), /Optimization Ideas for checksum/);
-  assert.match(await notes.innerText(), /CURRENT PROJECT DOCUMENT · CHECKSUM/);
+  assert.match(await notes.innerText(), /Current ideas for checksum/);
   await page
     .getByRole("button", { name: "Current prompt", exact: true })
     .click();
@@ -401,7 +432,7 @@ try {
   assert.deepEqual(await hashFiles(checksumPath), before.tree);
   assert.deepEqual(gitFingerprint(), before.git);
   console.log(
-    `S12 ${mode} smoke passed: documented example config; checksum discovery; baseline 18.35 ms / best 3.84 ms / 79.07%; 1% filter runs 2/4/8; chart/history selection; parent/baseline/artifact/split diffs; current ideas and prompt; SSE connected; unchanged checksum files/index/refs; zero browser errors.`,
+    `S12 ${mode} smoke passed: documented example config; checksum discovery; baseline 18.35 ms / best 3.84 ms / 79.07%; 1% filter runs 2/4/8; chart/attempt-list selection; parent/baseline/artifact/split diffs; current ideas and prompt; SSE connected; unchanged checksum files/index/refs; zero browser errors.`,
   );
 } finally {
   await browser?.close();
