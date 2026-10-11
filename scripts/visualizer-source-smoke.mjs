@@ -321,8 +321,18 @@ try {
     })
     .waitFor();
   assert.equal(await entries().count(), 0);
-  await selectProject(page, `uninitialized · . · ${fixture.uninitialized}`);
-  await page.getByText(/Uninitialized session\. No log/).waitFor();
+  await page.getByRole("combobox", { name: /^Project/ }).click();
+  assert.equal(
+    await page
+      .getByRole("group", { name: `Root ${fixture.uninitialized}` })
+      .count(),
+    0,
+  );
+  assert.equal(
+    await page.getByRole("option", { name: /^uninitialized ·/ }).count(),
+    0,
+  );
+  await page.keyboard.press("Escape");
   await selectProject(page, `shared · . · ${fixture.beta}`);
   await page
     .getByRole("heading", { name: "Beta session", exact: true })

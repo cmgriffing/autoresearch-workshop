@@ -323,16 +323,32 @@ try {
     await page.getByTestId("attempt-list").locator(".attempt-entry").count(),
     2,
   );
-  await selectProject(page, `uninitialized · . · ${fixture.uninitialized}`);
-  await page.getByText(/Uninitialized session\. No log/).waitFor();
-  await ideasButton.click();
-  await notes
-    .getByRole("heading", { name: "Before the first experiment", exact: true })
-    .waitFor();
+  await page.getByRole("combobox", { name: /^Project/ }).click();
+  assert.equal(
+    await page
+      .getByRole("group", { name: `Root ${fixture.uninitialized}` })
+      .count(),
+    0,
+  );
+  assert.equal(
+    await page.getByRole("option", { name: /^uninitialized ·/ }).count(),
+    0,
+  );
+  await page.keyboard.press("Escape");
+  const uninitialized = list.projects.find(
+    (project) => project.rootPath === fixture.uninitialized,
+  );
+  const planningSnapshot = ProjectSnapshotSchema.parse(
+    await (await fetch(`${uiOrigin}/api/projects/${uninitialized.id}`)).json(),
+  );
+  assert.match(
+    planningSnapshot.documents.ideas.content,
+    /Before the first experiment/,
+  );
   assert.deepEqual(errors, []);
   await assertReadOnly();
   console.log(
-    `S06 ${mode} document smoke passed: typed current ideas/prompt; Markdown and escaped code; raw HTML and unsafe URLs disabled; keyboard views; historical selection retained; note-only 409; atomic replacement; missing/empty/limited/unreadable/recovered notes; stale log with fresh notes; correct project scoping; uninitialized notes; unchanged files/index/refs; zero browser errors.`,
+    `S06 ${mode} document smoke passed: typed current ideas/prompt; Markdown and escaped code; raw HTML and unsafe URLs disabled; keyboard views; historical selection retained; note-only 409; atomic replacement; missing/empty/limited/unreadable/recovered notes; stale log with fresh notes; correct project scoping; uninitialized root hidden with notes retained in API; unchanged files/index/refs; zero browser errors.`,
   );
 } finally {
   await browser?.close();

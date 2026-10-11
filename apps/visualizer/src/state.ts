@@ -14,6 +14,26 @@ import {
 import type { AttemptRow } from "./attempts";
 
 export const projectListAtom = atom<ProjectsResponse | null>(null);
+export const visibleProjectListAtom = atom((get) => {
+  const list = get(projectListAtom);
+  if (!list) return null;
+  const visibleRootIds = new Set(
+    list.projects.flatMap((project) =>
+      project.sourceState !== "missing" || project.stale
+        ? project.rootAssociations.map((association) => association.rootId)
+        : [],
+    ),
+  );
+  return {
+    ...list,
+    roots: list.roots.filter((root) => visibleRootIds.has(root.id)),
+    projects: list.projects.filter((project) =>
+      project.rootAssociations.some((association) =>
+        visibleRootIds.has(association.rootId),
+      ),
+    ),
+  };
+});
 export const projectListErrorAtom = atom<string | null>(null);
 export const projectReloadAtom = atom(0);
 export type LiveConnection =
@@ -197,13 +217,16 @@ export const installProjectListAtom = atom(
   (get, set, list: ProjectsResponse) => {
     set(projectListAtom, list);
     set(projectListErrorAtom, null);
+    const projects = get(visibleProjectListAtom)!.projects;
     const current = get(selectedProjectIdAtom);
-    if (!list.projects.some((project) => project.id === current)) {
-      set(selectProjectAtom, list.projects[0]?.id ?? null);
+    if (!projects.some((project) => project.id === current)) {
+      set(selectProjectAtom, projects[0]?.id ?? null);
       if (current)
         set(
           selectionNoticeAtom,
-          "The selected project is no longer discovered. Choose an available project.",
+          list.projects.some((project) => project.id === current)
+            ? "The selected root has no initialized sessions. Choose an available project."
+            : "The selected project is no longer discovered. Choose an available project.",
         );
     }
   },

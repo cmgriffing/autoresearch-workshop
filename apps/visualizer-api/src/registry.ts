@@ -17,6 +17,8 @@ import type {
   RootSummary,
 } from "visualizar-common";
 import { loadConfig } from "./config.ts";
+import { expandRoots } from "./roots.ts";
+import type { ScanRoot } from "./roots.ts";
 import {
   readCurrentDocument,
   readLogSource,
@@ -162,6 +164,7 @@ export async function createRegistry(
 ) {
   const { config, roots: configuredRoots } = await loadConfig(configPath);
   const excluded = new Set([...config.exclude, ".auto"]);
+  let scanRoots: ScanRoot[] = [];
   const watchDirectory = options.watchDirectory ?? watch;
   const scanDirectory =
     options.scanDirectory ??
@@ -236,9 +239,10 @@ export async function createRegistry(
   ) {
     const roots: RootSummary[] = [];
     const discovered = new Map<string, RootAssociation[]>();
-    for (const [index, configuredRoot] of configuredRoots.entries()) {
+    scanRoots = await expandRoots(configuredRoots, excluded, scanRoots);
+    for (const configuredRoot of scanRoots) {
       const root: RootSummary = {
-        id: `d_${hash(`${index}\0${configuredRoot.path}`)}`,
+        id: `d_${hash(`${configuredRoot.index}\0${configuredRoot.path}`)}`,
         path: configuredRoot.path,
         recursive: configuredRoot.recursive,
         state: "available",
@@ -249,6 +253,14 @@ export async function createRegistry(
         root.state = "error";
         root.diagnostics.push({ code, message, rootId: root.id, directory });
       };
+      if (configuredRoot.diagnostic) {
+        diagnose(
+          configuredRoot.diagnostic.code,
+          root.path,
+          configuredRoot.diagnostic.message,
+        );
+        continue;
+      }
       try {
         root.canonicalPath = await realpath(root.path);
         if (!(await stat(root.canonicalPath)).isDirectory())

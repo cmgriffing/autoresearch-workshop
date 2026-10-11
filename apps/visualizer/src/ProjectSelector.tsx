@@ -3,7 +3,7 @@ import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import type { ProjectSummary, RootSummary } from "visualizar-common";
 import {
-  projectListAtom,
+  visibleProjectListAtom,
   projectListErrorAtom,
   selectedProjectIdAtom,
   selectProjectAtom,
@@ -91,7 +91,7 @@ export default function ProjectSelector({
 }: {
   onNavigate?: () => void;
 }) {
-  const list = useAtomValue(projectListAtom);
+  const list = useAtomValue(visibleProjectListAtom);
   const listError = useAtomValue(projectListErrorAtom);
   const selectedId = useAtomValue(selectedProjectIdAtom);
   const selectProject = useSetAtom(selectProjectAtom);
@@ -311,11 +311,6 @@ export default function ProjectSelector({
                   </div>
                 );
               })}
-              {group.root.state === "available" && group.items.length === 0 ? (
-                <p className="selector-empty-root" role="status">
-                  No sessions found in this root.
-                </p>
-              ) : null}
               {group.root.diagnostics.map((diagnostic, index) => (
                 <p
                   className="pane-message root-diagnostic"
@@ -333,7 +328,8 @@ export default function ProjectSelector({
             </p>
           ) : !query && options.length === 0 ? (
             <p className="selector-empty" role="status">
-              No projects discovered. Check the configured roots and refresh.
+              No initialized sessions found. Check the configured roots and
+              refresh.
             </p>
           ) : null}
           {query && options.length === 0 ? (
@@ -353,7 +349,7 @@ export default function ProjectSelector({
 }
 
 export function ProjectMetadata() {
-  const list = useAtomValue(projectListAtom);
+  const list = useAtomValue(visibleProjectListAtom);
   const selectedId = useAtomValue(selectedProjectIdAtom);
   const project = list?.projects.find((value) => value.id === selectedId);
   if (!project)
@@ -361,7 +357,7 @@ export function ProjectMetadata() {
       <div className="project-meta">
         <p className="project-meta-empty" role="status">
           {list && list.projects.length === 0
-            ? "No projects found. Configure roots containing .auto sessions, then refresh projects."
+            ? "No initialized sessions found. Configure roots containing .auto/log.jsonl, then refresh projects."
             : "No project selected. Choose one from the project selector."}
         </p>
       </div>

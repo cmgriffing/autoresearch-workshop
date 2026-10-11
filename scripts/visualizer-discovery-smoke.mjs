@@ -19,6 +19,12 @@ const mode = process.argv[2] ?? "dev";
 assert.ok(["dev", "built"].includes(mode), "Use dev or built.");
 const repo = fileURLToPath(new URL("../", import.meta.url));
 const fixture = await createDiscoveryFixture();
+const pendingRoot = join(fixture.directory, "pending-root");
+await mkdir(join(pendingRoot, ".auto"), { recursive: true });
+const config = JSON.parse(await readFile(fixture.configPath, "utf8"));
+config.roots.unshift({ path: pendingRoot, recursive: false });
+config.watch = false;
+await writeFile(fixture.configPath, JSON.stringify(config));
 const apiOrigin = "http://127.0.0.1:4313";
 const uiOrigin = mode === "dev" ? "http://127.0.0.1:5176" : apiOrigin;
 const children = [];
@@ -111,7 +117,7 @@ try {
   const list = ProjectsResponseSchema.parse(
     await (await fetch(`${uiOrigin}/api/projects`)).json(),
   );
-  assert.equal(list.projects.length, 5);
+  assert.equal(list.projects.length, 6);
   const alpha = list.projects.find(
     (project) => project.relativePath === "a/shared",
   );
@@ -144,15 +150,23 @@ try {
     name: `Root ${fixture.workspace}`,
     exact: true,
   });
-  assert.equal(await listbox.getByRole("group").count(), 7);
+  assert.equal(await listbox.getByRole("group").count(), 3);
   assert.equal(await group.getByRole("option").count(), 5);
   assert.equal(
     await listbox
       .getByText("No sessions found in this root.", { exact: true })
       .count(),
-    2,
+    0,
   );
-  assert.equal(await listbox.getByText(/Cannot open root/).count(), 2);
+  assert.equal(await listbox.getByText(/Cannot open root/).count(), 0);
+  assert.equal(
+    await listbox.getByRole("group", { name: `Root ${pendingRoot}` }).count(),
+    0,
+  );
+  assert.equal(
+    await listbox.getByRole("option", { name: /^pending-root ·/ }).count(),
+    0,
+  );
   assert.equal(
     await listbox
       .getByRole("option", { name: /hidden|external|cycle/ })
@@ -161,6 +175,44 @@ try {
   );
   await page.keyboard.press("Escape");
   assert.equal(await group.count(), 0);
+  await assertReadOnly();
+
+  // An initialized empty log makes the hidden root selectable on refresh.
+  const refresh = page.getByRole("button", {
+    name: "Refresh projects",
+    exact: true,
+  });
+  await writeFile(join(pendingRoot, ".auto/log.jsonl"), "");
+  before = await fingerprintDiscoveryFixture(fixture.directory);
+  await refresh.click();
+  await selectProject(page, `pending-root · . · ${pendingRoot}`);
+  await page.getByText("This log is empty.", { exact: true }).waitFor();
+  await assertReadOnly();
+  // Retained history keeps the root visible if the initialized log goes missing.
+  await rm(join(pendingRoot, ".auto/log.jsonl"));
+  before = await fingerprintDiscoveryFixture(fixture.directory);
+  await refresh.click();
+  await page
+    .getByText(/Stale data: showing the last successfully read project data\./)
+    .waitFor();
+  await projectSelector.click();
+  assert.equal(await listbox.getByRole("group").count(), 4);
+  assert.equal(
+    await listbox.getByRole("option", { name: /^pending-root ·/ }).count(),
+    1,
+  );
+  await page.keyboard.press("Escape");
+  await assertReadOnly();
+  await rm(join(pendingRoot, ".auto"), { recursive: true });
+  before = await fingerprintDiscoveryFixture(fixture.directory);
+  await refresh.click();
+  await page
+    .getByRole("heading", { name: "Parent session", exact: true })
+    .waitFor();
+  await assertReadOnly();
+  await mkdir(join(pendingRoot, ".auto"));
+  before = await fingerprintDiscoveryFixture(fixture.directory);
+  await refresh.click();
   await selectProject(page, `shared · a/shared · ${fixture.workspace}`);
   await page
     .getByRole("heading", { name: "Alpha session", exact: true })
@@ -261,10 +313,6 @@ try {
   const added = join(fixture.workspace, "new-session");
   await mkdir(join(added, ".auto"), { recursive: true });
   before = await fingerprintDiscoveryFixture(fixture.directory);
-  const refresh = page.getByRole("button", {
-    name: "Refresh projects",
-    exact: true,
-  });
   await refresh.click();
   await selectProject(page, /^new-session ·/);
   await page.getByText(/Uninitialized session\. No log/).waitFor();
@@ -334,32 +382,35 @@ try {
   await page.keyboard.press("Escape");
   await assertReadOnly();
 
-  // A fresh browser load verifies the global no-project state after rediscovery.
+  // Remaining uninitialized sessions must produce the same empty UI as no sessions.
   await rm(join(fixture.workspace, ".auto"), { recursive: true });
   await rm(join(fixture.alpha, ".auto"), { recursive: true });
   await rm(join(fixture.beta, ".auto"), { recursive: true });
   await rm(join(fixture.child, ".auto"), { recursive: true });
-  await rm(join(fixture.uninitialized, ".auto"), { recursive: true });
   before = await fingerprintDiscoveryFixture(fixture.directory);
   await refresh.click();
   await page
     .getByText(
-      "No projects found. Configure roots containing .auto sessions, then refresh projects.",
+      "No initialized sessions found. Configure roots containing .auto/log.jsonl, then refresh projects.",
       { exact: true },
     )
     .waitFor();
   await page.reload();
   await page
     .getByText(
-      "No projects found. Configure roots containing .auto sessions, then refresh projects.",
+      "No initialized sessions found. Configure roots containing .auto/log.jsonl, then refresh projects.",
       { exact: true },
     )
     .waitFor();
   assert.equal(await page.getByRole("table").count(), 0);
+  await projectSelector.click();
+  assert.equal(await listbox.getByRole("group").count(), 0);
+  assert.equal(await listbox.getByRole("option").count(), 0);
+  await page.keyboard.press("Escape");
   assert.deepEqual(errors, []);
   await assertReadOnly();
   console.log(
-    `S04 ${mode} discovery smoke passed: 5 canonical nested projects in one Git repository; 7 root groups; overlap/symlink/exclusion/missing-root states; keyboard navigation; late snapshot/diff protection; manual discovery/log reload/selection retention/removal; empty state; unchanged source files/index/refs; zero browser errors.`,
+    `S04 ${mode} discovery smoke passed: empty/uninitialized roots hidden from navigation and automatic selection; empty-log initialization and stale retention; overlapping nested sessions; keyboard navigation; late snapshot/diff protection; manual discovery/log reload/selection retention/removal; uninitialized-only empty state; unchanged source files/index/refs; zero browser errors.`,
   );
 } finally {
   await browser?.close();

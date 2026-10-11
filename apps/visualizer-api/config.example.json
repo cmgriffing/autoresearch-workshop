@@ -1,5 +1,11 @@
 {
-  "roots": [{ "path": "../../demo-projects/checksum", "recursive": false }],
+  "roots": [
+    { "path": "../../demo-projects", "recursive": true },
+    {
+      "path": "/Volumes/T7/kepler/worktrees/**/demo-projects",
+      "recursive": true
+    }
+  ],
   "watch": true,
   "rescanIntervalMs": 5000
 }

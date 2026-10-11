@@ -498,7 +498,7 @@ try {
   await page.reload();
   await page
     .getByText(
-      "No projects found. Configure roots containing .auto sessions, then refresh projects.",
+      "No initialized sessions found. Configure roots containing .auto/log.jsonl, then refresh projects.",
     )
     .waitFor();
   await page.unrouteAll({ behavior: "wait" });
