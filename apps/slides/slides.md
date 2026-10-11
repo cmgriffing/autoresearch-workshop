@@ -60,56 +60,12 @@ class: text-center
 
 - pi: [https://pi.dev](https://pi.dev)
 - pi-autoresearch: [https://github.com/davebcn87/pi-autoresearch](https://github.com/davebcn87/pi-autoresearch)
-- openrouter account (free): [https://openrouter.ai](https://openrouter.ai)
-
----
-
-# Local models as a fallback
-
-- Ollama: [https://ollama.com](https://ollama.com)
-- LMStudio: [https://lmstudio.ai](https://lmstudio.ai)
-
----
-layout: two-cols-header
----
-
-# Ollama Local Recommended Models
-
-::left::
-
-- Ornith 1.5
-  - ornith-1.5:9b - 6.6GB
-  - ornith-1.5:35b - 23GB
-- Muse Glimmer
-  - muse-glimmer:30b - 18GB
-- Nemotron 3.5 Lightning
-  - nemotron-3.5-lightning:30b - 25GB
-- IBM Granite 4.2
-  - granite4.2:3b - 2.2GB
-  - granite4.2:8b - 5.3GB
-  - granite4.2:30b - 18GB
-
-::right::
-
-- Google Gemma4
-  - gemma4:e2b - 4.6GB - 7.3GB
-  - gemma4:e4b - 6.6GB - 9.5GB
-  - gemma4:12b - 7.7GB - 8.0GB
-  - gemma4:26b - 16GB - 19GB
-  - gemma4:31b - 19GB - 20GB
-- GLM 4.7 Flash
-  - glm-4.7-flash:q4_K_M - 19GB
-- Qwen 3.8
-  - qwen3.8:27b - 18GB
-
----
-layout: center
-class: text-center
----
-
-# Local Models Compared
-
-<img src="./images/local-models.png" class="h-[30vh] w-auto" />
+- cloud model provider account (free):
+  - Openrouter: [https://openrouter.ai](https://openrouter.ai)
+  - Ollama Cloud: [https://ollama.com](https://ollama.com)
+- OR local models:
+  - Ollama: [https://ollama.com](https://ollama.com)
+  - LMStudio: [https://lmstudio.ai](https://lmstudio.ai)
 
 
 ---
@@ -198,9 +154,18 @@ https://openrouter.ai/workspaces/default/keys
 4. Select `OpenRouter` from the list
 5. Enter your API key
 
+> Note: You can use "Sign in with an account" to bring in models from OpenAI, GitHub Copilot, Meta, etc. But the focus of this workshop is open models.
+
+---
+layout: center
+class: text-center
 ---
 
 # Configuring Pi for OpenRouter (auth.json)
+
+<p></p>
+
+<p class="text-left">
 
 Edit the `auth.json` file in `~/.pi/agent` with the following:
 
@@ -213,9 +178,18 @@ Edit the `auth.json` file in `~/.pi/agent` with the following:
 }
 ```
 
+</p>
+
+---
+layout: center
+class: text-center
 ---
 
 # OpenRouter Model Choices
+
+<p></p>
+
+<p class="text-left">
 
 Free models:
 - nvidia/nemotron-3.5-lightning:free
@@ -226,12 +200,109 @@ Free models:
 - poolside/laguna-xs-2.1:free
 - google/gemma-4-26b-a4b-it:free
 
+</p>
+
 ---
 layout: center
 ---
 
 <img src="./images/openrouter-free-models.png" class="w-[80vh] h-auto" />
 
+---
+layout: center
+class: text-center
+---
+
+# Ollama Cloud (free)
+
+<p></p>
+
+<p class="text-left ml-12">
+
+https://ollama.com/pricing
+
+https://signin.ollama.com/sign-up
+
+
+The free usage credits seem to be: 
+
+- 2M tokens per 5 hour session
+- 4M tokens per weekly session.
+
+</p>
+
+---
+
+# Configuring Pi for Ollama Cloud
+
+1. Install Ollama: [https://ollama.com/docs/install](https://ollama.com/docs/install)
+2. Sign into Ollama: `ollama signin`
+3. Download a cloud model: `ollama pull gemma4:31b`
+4. Start pi with ollama: `ollama launch pi --config`
+5. Select the installed cloud model
+6. Select Yes to launch pi
+
+---
+
+# Ollama Cloud Free Model Choices
+
+- gemma4:31b
+- gpt-oss:120b
+- gpt-oss:20b
+- nemotron-3-nano:30b
+- nemotron-3-super
+- nemotron-3-ultra
+
+---
+layout: center
+class: text-center
+---
+
+# Ollama Local Works Similarly
+
+Much bigger downloads but more models to choose from
+
+---
+layout: two-cols-header
+---
+
+# Ollama Local Recommended Models
+
+::left::
+
+- Ornith 1.5
+  - ornith-1.5:9b - 6.6GB
+  - ornith-1.5:35b - 23GB
+- Muse Glimmer
+  - muse-glimmer:30b - 18GB
+- Nemotron 3.5 Lightning
+  - nemotron-3.5-lightning:30b - 25GB
+- IBM Granite 4.2
+  - granite4.2:3b - 2.2GB
+  - granite4.2:8b - 5.3GB
+  - granite4.2:30b - 18GB
+
+::right::
+
+- Google Gemma4
+  - gemma4:e2b - 4.6GB - 7.3GB
+  - gemma4:e4b - 6.6GB - 9.5GB
+  - gemma4:12b - 7.7GB - 8.0GB
+  - gemma4:26b - 16GB - 19GB
+  - gemma4:31b - 19GB - 20GB
+- GLM 4.7 Flash
+  - glm-4.7-flash:q4_K_M - 19GB
+- Qwen 3.8
+  - qwen3.8:27b - 18GB
+
+---
+layout: center
+class: text-center
+---
+
+# Local Models Compared
+
+<img src="./images/local-models.png" class="h-[30vh] w-auto" />
 
 ---
 
