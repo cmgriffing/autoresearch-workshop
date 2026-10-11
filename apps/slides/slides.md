@@ -1,6 +1,6 @@
 ---
 # try also 'default' to start simple
-theme: default
+theme: ./theme
 # random image from a curated Unsplash collection by Anthony
 # like them? see https://unsplash.com/collections/94734566/slidev
 background: /ousa-chea-gKUC4TMhOiY-unsplash.jpg
@@ -385,5 +385,3 @@ class: text-center
 ---
 
 # Thanks!
-
-
