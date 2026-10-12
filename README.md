@@ -15,46 +15,6 @@ However, the same approach can be used to optimize basically anything that has a
 
 This workshop will focus on using [pi-autoresearch](https://github.com/davebcn87/pi-autoresearch). But you can use any one you want, I just won't be able to help as much with troubleshooting.
 
-## Demo Projects
-
-`demo-projects/` contains target projects for autoresearch sessions. Each one is a small
-application with a deliberate performance ceiling, a low-noise metric, a correctness
-gate, and instrumentation that makes its bottleneck observable. See
-[`demo-projects/README.md`](./demo-projects/README.md) for the shared contract.
-
-| Demo                                                                 | Objective metric (lower is better) | Prerequisite                                                          |
-| -------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------- |
-| [`demo-projects/svg-chart`](./demo-projects/svg-chart)               | `ms`                               | none — plain Node, zero dependencies                                  |
-| [`demo-projects/slow-api`](./demo-projects/slow-api)                 | `scenario_ms`                      | none — uses the built-in `node:sqlite` module                         |
-| [`demo-projects/bundle-diet`](./demo-projects/bundle-diet)           | `critical_gzip_kb`                 | Chromium for the boot oracle: `pnpm exec playwright install chromium` |
-| [`demo-projects/datagrid-perf`](./demo-projects/datagrid-perf)       | `render_ms`                        | none — jsdom and Vitest install with the workspace                    |
-| [`demo-projects/canvas-particles`](./demo-projects/canvas-particles) | `total_ms`                         | none — `@napi-rs/canvas` installs a prebuilt binary                   |
-| [`demo-projects/nextjs-core-web-vitals`](./demo-projects/nextjs-core-web-vitals) | `cwv_budget`       | Chromium (same as `bundle-diet`); run `pnpm run setup` once per machine    |
-
-Install the workspace once from the repository root (`pnpm install`). Each demo then
-provides `test`, `bench` and `verify` scripts; `pnpm --filter <demo> verify` is the
-pre-flight check.
-
-## Reviewing sessions with the visualizer
-
-`apps/visualizer` provides a local browser UI for reviewing autoresearch sessions
-found under configured roots. It reads `.auto/log.jsonl`, `ideas.md`, and
-`prompt.md`, derives segment-aware wins, and loads project-scoped Git diffs on
-demand without modifying the source projects.
-
-```sh
-pnpm install
-pnpm dev:visualizer    # API on http://127.0.0.1:4310, Vite UI on http://127.0.0.1:5173
-pnpm build:visualizer
-pnpm start:visualizer  # built UI and API on http://127.0.0.1:4310
-```
-
-The checked-in example config (`apps/visualizer-api/config.example.json`) points at
-`demo-projects/checksum`. See [`apps/visualizer/README.md`](./apps/visualizer/README.md)
-for the full configuration and behavior reference, including metric segments,
-improvement semantics, source and diff limits, refresh monitoring, and availability
-states.
-
 ## Requirements
 
 Before the workshop begins you may want to have a few things installed to save time and keep from overloading the Wi-fi network.
@@ -106,24 +66,20 @@ To install the pi-plugin, you can run:
 pi install npm:pi-autoresearch
 ```
 
+### Get Access to Open Models
+
+The goal of this workshop is to get you into autoresearch with open weight models using free/cheap providers or local models. There are a few providers you can use for this.
+
+- [OpenRouter](https://openrouter.ai) (Free but limited model choice)
+- [Ollama Cloud](https://ollama.com/pricing) (Free but limited model choice) or ($20/mo)
+- [OpenCode Go](https://opencode.ai/go) ($10/mo)
+- Local hosting (Ollama, LMStudio, etc)
+
 ### OpenRouter
 
-An OpenRouter account is recommended for this workshop. You can sign up for a free account at [https://openrouter.ai](https://openrouter.ai) and use their [free models](https://openrouter.ai/models?variant=free&output_modalities=text).
+OpenRouter has a very large selection of models to use, but a much more limited set of free models. You can sign up for a free account at [https://openrouter.ai](https://openrouter.ai) and use their [free models](https://openrouter.ai/models?variant=free&output_modalities=text).
 
-You will need to create an API key and save it in your environment variables before running pi.
-
-You can also save the API key in `~/.pi/agent/auth.json`.
-
-```json
-{
-  "openrouter": {
-    "type": "api_key",
-    "key": "sk-or-your-key-here"
-  }
-}
-```
-
-#### Recommended Models
+#### OpenRouter Recommended Models
 
 OpenRouter, at the time of this writing, has around 16 free models to choose from. However, some are not suited well to coding tasks. It is not recommended to use paid API-token-priced models from OpenRouter for this workshop.
 
@@ -141,15 +97,104 @@ For the sake of this workshop, I recommend looking at the following models:
 
 These models are not the most intelligent models. But, the case to be made in this workshop is that absolute intelligence is not as important when you can just loop a model on optimizing a score.
 
-#### Other Providers
+#### Configuring Pi for OpenRouter (/login)
 
-There are other providers of open models that you can use. They will give you more access to more intelligent open weight models.
+1. Run `pi`
+2. Type `/login`
+3. Select `Sign in with an API key`
+4. Select `OpenRouter` from the list
+5. Enter your API key
 
-- [OpenCode Go](https://opencode.ai/go) ($10/mo)
-- [Ollama Cloud](https://ollama.com/pricing) ($20/mo)
-- Local hosting (not recommended for this workshop due to speed)
+#### Configuring Pi for OpenRouter (manually)
 
-## Fork This Tepo
+You will need to create an API key and save it in your environment variables before running pi.
+
+You can also save the API key in `~/.pi/agent/auth.json`.
+
+```json
+{
+  "openrouter": {
+    "type": "api_key",
+    "key": "sk-or-your-key-here"
+  }
+}
+```
+
+### Ollama Cloud
+
+Sign up for a free account at [https://signin.ollama.com/sign-up](https://signin.ollama.com/sign-up)
+
+The free usage credits seem to be:
+
+- 2M tokens per 5 hour session
+- 4M tokens per weekly session.
+
+#### Ollama Cloud Free Model Choices
+
+- `gemma4:31b`
+- `nemotron-3-nano:30b`
+- `nemotron-3-super`
+- `nemotron-3-ultra`
+- `gpt-oss:20b`
+- `gpt-oss:120b`
+
+#### Configuring Pi for Ollama Cloud
+
+1. Install Ollama: [https://ollama.com/docs/install](https://ollama.com/docs/install)
+2. Sign into Ollama: `ollama signin`
+3. Download a cloud model: `ollama pull gemma4:31b-cloud`
+4. Start pi with ollama: `ollama launch pi --config`
+5. Select the installed cloud model
+6. Select Yes to launch pi
+
+### Local Models via Ollama
+
+Local models are an option if your device is capable of running them. Ollama is a great choice for this.
+
+> Note:If you want to use LMStudio or another local model tool, you will need to find instructions for that yourself.
+
+#### Recommended Local Models via Ollama
+
+Some models have multiple parameter sizes. Pick one that will fit within your GPU's RAM budget.
+
+- ornith-1.5
+- muse-glimmer
+- nemotron-3.5-lightning
+- granite4.2
+- gemma4
+- glm-4.7-flash
+- qwen3.8
+
+#### Configuring Pi for Ollama Local Models
+
+1. Install Ollama: [https://ollama.com/docs/install](https://ollama.com/docs/install)
+2. Sign into Ollama: `ollama signin`
+3. Download a local model: `ollama pull gemma4:31b`
+4. Start pi with ollama: `ollama launch pi --config`
+5. Select the installed local model
+6. Select Yes to launch pi
+
+## Demo Projects
+
+`demo-projects/` contains target projects for autoresearch sessions. Each one is a small
+application with a deliberate performance ceiling, a low-noise metric, a correctness
+gate, and instrumentation that makes its bottleneck observable. See
+[`demo-projects/README.md`](./demo-projects/README.md) for the shared contract.
+
+| Demo                                                                             | Objective metric (lower is better) | Prerequisite                                                            |
+| -------------------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------- |
+| [`demo-projects/svg-chart`](./demo-projects/svg-chart)                           | `ms`                               | none — plain Node, zero dependencies                                    |
+| [`demo-projects/slow-api`](./demo-projects/slow-api)                             | `scenario_ms`                      | none — uses the built-in `node:sqlite` module                           |
+| [`demo-projects/bundle-diet`](./demo-projects/bundle-diet)                       | `critical_gzip_kb`                 | Chromium for the boot oracle: `pnpm exec playwright install chromium`   |
+| [`demo-projects/datagrid-perf`](./demo-projects/datagrid-perf)                   | `render_ms`                        | none — jsdom and Vitest install with the workspace                      |
+| [`demo-projects/canvas-particles`](./demo-projects/canvas-particles)             | `total_ms`                         | none — `@napi-rs/canvas` installs a prebuilt binary                     |
+| [`demo-projects/nextjs-core-web-vitals`](./demo-projects/nextjs-core-web-vitals) | `cwv_budget`                       | Chromium (same as `bundle-diet`); run `pnpm run setup` once per machine |
+
+Install the workspace once from the repository root (`pnpm install`). Each demo then
+provides `test`, `bench` and `verify` scripts; `pnpm --filter <demo> verify` is the
+pre-flight check.
+
+## Fork This Repo
 
 You will likely want to push your work to branches and PRs so you can evaluate the results of your autoresearch sessions.
 

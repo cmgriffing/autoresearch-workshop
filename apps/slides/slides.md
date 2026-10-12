@@ -209,10 +209,6 @@ label: Setup / OpenRouter configuration
 
 # Configuring Pi for OpenRouter (auth.json)
 
-
-
-
-
 Edit the `auth.json` file in `~/.pi/agent` with the following:
 
 ```json
@@ -231,10 +227,6 @@ class: reference-list
 ---
 
 # OpenRouter Model Choices
-
-
-
-
 
 Free models:
 - `nvidia/nemotron-3.5-lightning:free`
@@ -262,14 +254,9 @@ class: reference-provider
 
 # Ollama Cloud (free)
 
-
-
-
-
 https://ollama.com/pricing
 
 https://signin.ollama.com/sign-up
-
 
 The free usage credits seem to be: 
 
@@ -325,41 +312,41 @@ label: Local models / download reference
 
 <div class="model-group">
 <h2>Ornith 1.5</h2>
-<div class="model-row"><code>ornith-1.5:9b</code><span class="model-size"> - 6.6GB</span></div>
-<div class="model-row"><code>ornith-1.5:35b</code><span class="model-size"> - 23GB</span></div>
+<div class="model-row"><code>ornith-1.5:9b</code><span class="model-size"> 6.6GB</span></div>
+<div class="model-row"><code>ornith-1.5:35b</code><span class="model-size"> 23GB</span></div>
 </div>
 <div class="model-group">
 <h2>Muse Glimmer</h2>
-<div class="model-row"><code>muse-glimmer:30b</code><span class="model-size"> - 18GB</span></div>
+<div class="model-row"><code>muse-glimmer:30b</code><span class="model-size">18GB</span></div>
 </div>
 <div class="model-group">
 <h2>Nemotron 3.5 Lightning</h2>
-<div class="model-row"><code>nemotron-3.5-lightning:30b</code><span class="model-size"> - 25GB</span></div>
+<div class="model-row"><code>nemotron-3.5-lightning:30b</code><span class="model-size">25GB</span></div>
 </div>
 <div class="model-group">
 <h2>IBM Granite 4.2</h2>
-<div class="model-row"><code>granite4.2:3b</code><span class="model-size"> - 2.2GB</span></div>
-<div class="model-row"><code>granite4.2:8b</code><span class="model-size"> - 5.3GB</span></div>
-<div class="model-row"><code>granite4.2:30b</code><span class="model-size"> - 18GB</span></div>
+<div class="model-row"><code>granite4.2:3b</code><span class="model-size">2.2GB</span></div>
+<div class="model-row"><code>granite4.2:8b</code><span class="model-size">5.3GB</span></div>
+<div class="model-row"><code>granite4.2:30b</code><span class="model-size">18GB</span></div>
 </div>
 
 ::right::
 
 <div class="model-group">
 <h2>Google Gemma4</h2>
-<div class="model-row"><code>gemma4:e2b</code><span class="model-size"> - 4.6GB - 7.3GB</span></div>
-<div class="model-row"><code>gemma4:e4b</code><span class="model-size"> - 6.6GB - 9.5GB</span></div>
-<div class="model-row"><code>gemma4:12b</code><span class="model-size"> - 7.7GB - 8.0GB</span></div>
-<div class="model-row"><code>gemma4:26b</code><span class="model-size"> - 16GB - 19GB</span></div>
-<div class="model-row"><code>gemma4:31b</code><span class="model-size"> - 19GB - 20GB</span></div>
+<div class="model-row"><code>gemma4:e2b</code><span class="model-size">4.6GB - 7.3GB</span></div>
+<div class="model-row"><code>gemma4:e4b</code><span class="model-size">6.6GB - 9.5GB</span></div>
+<div class="model-row"><code>gemma4:12b</code><span class="model-size">7.7GB - 8.0GB</span></div>
+<div class="model-row"><code>gemma4:26b</code><span class="model-size">16GB - 19GB</span></div>
+<div class="model-row"><code>gemma4:31b</code><span class="model-size">19GB - 20GB</span></div>
 </div>
 <div class="model-group">
 <h2>GLM 4.7 Flash</h2>
-<div class="model-row"><code>glm-4.7-flash:q4_K_M</code><span class="model-size"> - 19GB</span></div>
+<div class="model-row"><code>glm-4.7-flash:q4_K_M</code><span class="model-size">19GB</span></div>
 </div>
 <div class="model-group">
 <h2>Qwen 3.8</h2>
-<div class="model-row"><code>qwen3.8:27b</code><span class="model-size"> - 18GB</span></div>
+<div class="model-row"><code>qwen3.8:27b</code><span class="model-size">18GB</span></div>
 </div>
 
 ---
