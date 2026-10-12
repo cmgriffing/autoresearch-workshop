@@ -1,7 +1,12 @@
+<script setup lang="ts">
+import LabFrame from '../components/LabFrame.vue'
+import ExperimentLoop from '../components/ExperimentLoop.vue'
+defineProps<{ label?: string }>()
+</script>
+
 <template>
-  <div class="slidev-layout section w-full h-full grid">
-    <div class="my-auto text-center">
-      <slot />
-    </div>
-  </div>
+  <LabFrame kind="section" :label="label" grid>
+    <div class="section-title"><slot /></div>
+    <ExperimentLoop />
+  </LabFrame>
 </template>

@@ -22,9 +22,10 @@
   "slidev": {
     "defaults": {
       "fonts": {
-        "mono": "Fira Code",
-        "sans": "Avenir Next,Nunito Sans",
-        "local": "Avenir Next"
+        "mono": "IBM Plex Mono",
+        "sans": "IBM Plex Sans",
+        "local": "Archivo,IBM Plex Sans,IBM Plex Mono",
+        "provider": "none"
       }
     }
   },

@@ -1,16 +1,20 @@
 ---
 # try also 'default' to start simple
 theme: ./theme
-# random image from a curated Unsplash collection by Anthony
-# like them? see https://unsplash.com/collections/94734566/slidev
-background: /ousa-chea-gKUC4TMhOiY-unsplash.jpg
+layout: cover
+colorSchema: dark
+fonts:
+  sans: IBM Plex Sans
+  mono: IBM Plex Mono
+  local: Archivo,IBM Plex Sans,IBM Plex Mono
+  provider: none
 # some information about your slides (markdown enabled)
 title: Autoresearch Workshop
 info: |
   ## Autoresearch Workshop
   A workshop to help you get up and running with pi-autoresearch and open weight models
 # apply UnoCSS classes to the current slide
-class: text-center
+label: Autoresearch workshop
 # https://sli.dev/features/drawing
 drawings:
   persist: false
@@ -25,103 +29,136 @@ duration: 35min
 # Your First Autoresearch
 
 ---
-layout: center
-class: text-center
+layout: checkpoint
+label: Workshop / First experiment
+repo: true
 ---
 
 # Kicking Off an Example Task
 
 ---
-layout: center
-class: text-center
+layout: section
+label: 01 / Getting started
 ---
 
 # Getting Started
 
 ---
-layout: quote
+layout: statement
+label: Audience / Your optimization target
+class: statement-question
 ---
 
 # Who has parts of their application or side project they would love to optimize for performance?
 
 ---
-layout: center
-class: text-center
+layout: repository
+label: Getting started / repository
 ---
 
 # The Repo
 
-
-<img src="./images/repo-qr-code.svg" class="h-[40vh] w-auto" />
-
+---
+layout: reference
+label: Getting started / Requirements
 ---
 
 # Requirements
 
+<div class="requirements-core">
+
 - pi: [https://pi.dev](https://pi.dev)
 - pi-autoresearch: [https://github.com/davebcn87/pi-autoresearch](https://github.com/davebcn87/pi-autoresearch)
-- cloud model provider account (free):
-  - Openrouter: [https://openrouter.ai](https://openrouter.ai)
-  - Ollama Cloud: [https://ollama.com](https://ollama.com)
-- OR local models:
-  - Ollama: [https://ollama.com](https://ollama.com)
-  - LMStudio: [https://lmstudio.ai](https://lmstudio.ai)
 
+</div>
+
+::left::
+
+cloud model provider account (free):
+
+- Openrouter: [https://openrouter.ai](https://openrouter.ai)
+- Ollama Cloud: [https://ollama.com](https://ollama.com)
+
+::right::
+
+OR local models:
+
+- Ollama: [https://ollama.com](https://ollama.com)
+- LMStudio: [https://lmstudio.ai](https://lmstudio.ai)
 
 ---
-layout: center
-class: text-center
+layout: checkpoint
+label: Checkpoint / Example task
+repo: true
 ---
 
 # Checking in on our example...
 
 ---
-layout: center
-class: text-center
+layout: section
+label: 02 / The experiment
 ---
 
 # What is autoresearch?
 
 ---
-layout: center
-class: text-center
+layout: statement
+label: Definition / Autoresearch
 ---
 
-# This is NOT research as in gathering data about a topic
+# This is **NOT research** as in gathering data about a topic
 
 ---
-layout: image
-image: /images/karpathy.png
+layout: media
+label: Origin / Andrej Karpathy
 ---
 
+::image::
+
+<img src="./images/karpathy.png" alt="Andrej Karpathy's autoresearch GitHub repository, including its file list and overview of autonomous LLM training experiments" />
+
 ---
-layout: quote
+layout: statement
+label: The idea / Autonomous experiments
+class: statement-long
 ---
 
 # **The idea**: give an AI agent a small but real LLM training setup and let it experiment autonomously overnight.
 
+---
+layout: media
+label: Implementation / pi-autoresearch
+---
+
+::image::
+
+<img src="./images/pi-autoresearch.png" alt="pi-autoresearch project overview describing optimization targets and the experiment loop" />
 
 ---
-layout: image
-image: /images/pi-autoresearch.png
----
-
----
-layout: quote
+layout: statement
+label: Applications / Any optimization target
+class: statement-long
 ---
 
 # **Works for any optimization target**: test speed, bundle size, LLM training, build times, Lighthouse scores.
 
 ---
+layout: reference
+label: Ecosystem / Implementations
+class: reference-links
+---
 
 # Other "implementations"
 
-<p></p>
+::left::
 
 autoresearch-specific:
+
 - [drivelineresearch/autoresearch-claude-code](https://github.com/drivelineresearch/autoresearch-claude-code)
 - [moedesux/autoresearch-opencode](https://github.com/moedesux/autoresearch-opencode)
 - [uditgoenka/autoresearch](https://github.com/uditgoenka/autoresearch)(Claude, OpenCode, Codex)
+
+::right::
 
 similar:
 
@@ -129,21 +166,28 @@ similar:
 - performance-goal in Oh-my-codex: [https://github.com/Yeachan-Heo/oh-my-codex/blob/main/plugins/oh-my-codex/skills/performance-goal/SKILL.md](https://github.com/Yeachan-Heo/oh-my-codex/blob/main/plugins/oh-my-codex/skills/performance-goal/SKILL.md)
 
 ---
-layout: center
-class: text-center
+layout: section
+label: 03 / Model setup
 ---
 
 # Getting Started (continued)
 
+---
+layout: media
+label: Setup / OpenRouter API keys
 ---
 
 # OpenRouter API Keys
 
 https://openrouter.ai/workspaces/default/keys
 
-<img src="./images/openrouter-api-key.png" class="h-[30vh] w-auto" />
+::image::
 
+<img src="./images/openrouter-api-key.png" alt="OpenRouter API key creation dialog with name, credit limit, and expiration fields" />
 
+---
+layout: instructions
+label: Setup / OpenRouter
 ---
 
 # Configuring Pi for OpenRouter (/login)
@@ -154,18 +198,20 @@ https://openrouter.ai/workspaces/default/keys
 4. Select `OpenRouter` from the list
 5. Enter your API key
 
+::note::
+
 > Note: You can use "Sign in with an account" to bring in models from OpenAI, GitHub Copilot, Meta, etc. But the focus of this workshop is open models.
 
 ---
-layout: center
-class: text-center
+layout: instructions
+label: Setup / OpenRouter configuration
 ---
 
 # Configuring Pi for OpenRouter (auth.json)
 
-<p></p>
 
-<p class="text-left">
+
+
 
 Edit the `auth.json` file in `~/.pi/agent` with the following:
 
@@ -178,46 +224,47 @@ Edit the `auth.json` file in `~/.pi/agent` with the following:
 }
 ```
 
-</p>
-
 ---
-layout: center
-class: text-center
+layout: reference
+label: Models / OpenRouter
+class: reference-list
 ---
 
 # OpenRouter Model Choices
 
-<p></p>
 
-<p class="text-left">
+
+
 
 Free models:
-- nvidia/nemotron-3.5-lightning:free
-- cohere/north-mini-code:free
-- apodex/apodex-1.1-mini:free
-- dots-studio/dots-3-note-preview:free
-- thinkingmachines/inkling-small:free
-- poolside/laguna-xs-2.1:free
-- google/gemma-4-26b-a4b-it:free
-
-</p>
+- `nvidia/nemotron-3.5-lightning:free`
+- `cohere/north-mini-code:free`
+- `apodex/apodex-1.1-mini:free`
+- `dots-studio/dots-3-note-preview:free`
+- `thinkingmachines/inkling-small:free`
+- `poolside/laguna-xs-2.1:free`
+- `google/gemma-4-26b-a4b-it:free`
 
 ---
-layout: center
+layout: media
+label: Models / OpenRouter free tier
 ---
 
-<img src="./images/openrouter-free-models.png" class="w-[80vh] h-auto" />
+::image::
+
+<img src="./images/openrouter-free-models.png" alt="Artificial Analysis Intelligence Index comparison of cloud models, including model names, scores, estimate markers, and source attribution" />
 
 ---
-layout: center
-class: text-center
+layout: reference
+label: Models / Ollama Cloud
+class: reference-provider
 ---
 
 # Ollama Cloud (free)
 
-<p></p>
 
-<p class="text-left ml-12">
+
+
 
 https://ollama.com/pricing
 
@@ -229,8 +276,9 @@ The free usage credits seem to be:
 - 2M tokens per 5 hour session
 - 4M tokens per weekly session.
 
-</p>
-
+---
+layout: instructions
+label: Setup / Ollama Cloud
 ---
 
 # Configuring Pi for Ollama Cloud
@@ -243,19 +291,23 @@ The free usage credits seem to be:
 6. Select Yes to launch pi
 
 ---
+layout: reference
+label: Models / Ollama Cloud
+class: reference-list
+---
 
 # Ollama Cloud Free Model Choices
 
-- gemma4:31b
-- gpt-oss:120b
-- gpt-oss:20b
-- nemotron-3-nano:30b
-- nemotron-3-super
-- nemotron-3-ultra
+- `gemma4:31b`
+- `gpt-oss:120b`
+- `gpt-oss:20b`
+- `nemotron-3-nano:30b`
+- `nemotron-3-super`
+- `nemotron-3-ultra`
 
 ---
-layout: center
-class: text-center
+layout: statement
+label: Models / Running locally
 ---
 
 # Ollama Local Works Similarly
@@ -263,76 +315,98 @@ class: text-center
 Much bigger downloads but more models to choose from
 
 ---
-layout: two-cols-header
+layout: reference
+label: Local models / download reference
 ---
 
 # Ollama Local Recommended Models
 
 ::left::
 
-- Ornith 1.5
-  - ornith-1.5:9b - 6.6GB
-  - ornith-1.5:35b - 23GB
-- Muse Glimmer
-  - muse-glimmer:30b - 18GB
-- Nemotron 3.5 Lightning
-  - nemotron-3.5-lightning:30b - 25GB
-- IBM Granite 4.2
-  - granite4.2:3b - 2.2GB
-  - granite4.2:8b - 5.3GB
-  - granite4.2:30b - 18GB
+<div class="model-group">
+<h2>Ornith 1.5</h2>
+<div class="model-row"><code>ornith-1.5:9b</code><span class="model-size"> - 6.6GB</span></div>
+<div class="model-row"><code>ornith-1.5:35b</code><span class="model-size"> - 23GB</span></div>
+</div>
+<div class="model-group">
+<h2>Muse Glimmer</h2>
+<div class="model-row"><code>muse-glimmer:30b</code><span class="model-size"> - 18GB</span></div>
+</div>
+<div class="model-group">
+<h2>Nemotron 3.5 Lightning</h2>
+<div class="model-row"><code>nemotron-3.5-lightning:30b</code><span class="model-size"> - 25GB</span></div>
+</div>
+<div class="model-group">
+<h2>IBM Granite 4.2</h2>
+<div class="model-row"><code>granite4.2:3b</code><span class="model-size"> - 2.2GB</span></div>
+<div class="model-row"><code>granite4.2:8b</code><span class="model-size"> - 5.3GB</span></div>
+<div class="model-row"><code>granite4.2:30b</code><span class="model-size"> - 18GB</span></div>
+</div>
 
 ::right::
 
-- Google Gemma4
-  - gemma4:e2b - 4.6GB - 7.3GB
-  - gemma4:e4b - 6.6GB - 9.5GB
-  - gemma4:12b - 7.7GB - 8.0GB
-  - gemma4:26b - 16GB - 19GB
-  - gemma4:31b - 19GB - 20GB
-- GLM 4.7 Flash
-  - glm-4.7-flash:q4_K_M - 19GB
-- Qwen 3.8
-  - qwen3.8:27b - 18GB
+<div class="model-group">
+<h2>Google Gemma4</h2>
+<div class="model-row"><code>gemma4:e2b</code><span class="model-size"> - 4.6GB - 7.3GB</span></div>
+<div class="model-row"><code>gemma4:e4b</code><span class="model-size"> - 6.6GB - 9.5GB</span></div>
+<div class="model-row"><code>gemma4:12b</code><span class="model-size"> - 7.7GB - 8.0GB</span></div>
+<div class="model-row"><code>gemma4:26b</code><span class="model-size"> - 16GB - 19GB</span></div>
+<div class="model-row"><code>gemma4:31b</code><span class="model-size"> - 19GB - 20GB</span></div>
+</div>
+<div class="model-group">
+<h2>GLM 4.7 Flash</h2>
+<div class="model-row"><code>glm-4.7-flash:q4_K_M</code><span class="model-size"> - 19GB</span></div>
+</div>
+<div class="model-group">
+<h2>Qwen 3.8</h2>
+<div class="model-row"><code>qwen3.8:27b</code><span class="model-size"> - 18GB</span></div>
+</div>
 
 ---
-layout: center
-class: text-center
+layout: media
+label: Local models / Comparison chart
 ---
 
 # Local Models Compared
 
-<img src="./images/local-models.png" class="h-[30vh] w-auto" />
+::image::
 
+<img src="./images/local-models.png" alt="Local model comparison bar chart showing model labels, scores, estimate markers, and the original Artificial Analysis attribution" />
+
+---
+layout: reference
+label: Workshop / Optimization targets
+class: reference-list
 ---
 
 # The Demos and What They Optimize For
 
-- bundle-diet: bundle size for frontend code
-- canvas-particles: particle animation performance
-- checksum: a simple cpu bound checksum task
-- datagrid-perf: table/grid rendering
-- dbmon-react: react the classic example demo
-- slow-api: SQL query/schema optimization
-- svg-chart: svg chart rendering
+- `bundle-diet`: bundle size for frontend code
+- `canvas-particles`: particle animation performance
+- `checksum`: a simple cpu bound checksum task
+- `datagrid-perf`: table/grid rendering
+- `dbmon-react`: react the classic example demo
+- `slow-api`: SQL query/schema optimization
+- `svg-chart`: svg chart rendering
 
 ---
-layout: center
-class: text-center
+layout: checkpoint
+label: Workshop / Your turn
+repo: true
 ---
 
 # Get a Demo Going!
 
 ---
-layout: center
-class: text-center
+layout: section
+label: 04 / Pitfalls
 ---
 
 # Pitfalls
 
 ---
-layout: center
-class: text-center
+layout: statement
+label: Pitfalls / Returns
 ---
 
 # Diminishing Returns
@@ -340,8 +414,8 @@ class: text-center
 Not everything can be optimized further
 
 ---
-layout: center
-class: text-center
+layout: statement
+label: Pitfalls / Stopping
 ---
 
 # pi-autoresearch will run forever
@@ -349,39 +423,41 @@ class: text-center
 The other autoresearch plugin for Claude/Codex/OpenCode has limits you can give it
 
 ---
-layout: center
-class: text-center
+layout: statement
+label: Pitfalls / Benchmarks
+class: statement-long
 ---
 
-# Optimizations are only as good as your benchmarks
+# Optimizations are only as good as **your benchmarks**
 
 If the benchmark isn't realistic, the optimizations could be bad for runtime code
 
 ---
-layout: center
-class: text-center
+layout: checkpoint
+label: Checkpoint / Experiment progress
+repo: true
 ---
 
 # Checking on our autoresearch again
 
 ---
-layout: center
-class: text-center
+layout: checkpoint
+label: Checkpoint / Review
+repo: true
 ---
 
 # Inspecting the results
 
 ---
-layout: center
-class: text-center
+layout: statement
+label: Discussion
 ---
 
 # Questions?
 
-
 ---
-layout: center
-class: text-center
+layout: cover
+label: Autoresearch workshop / End of session
 ---
 
 # Thanks!

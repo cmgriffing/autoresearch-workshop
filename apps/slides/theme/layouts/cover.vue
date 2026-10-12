@@ -1,20 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { handleBackground } from '../layoutHelper'
-
-const props = defineProps({
-  background: {
-    default: '',
-  },
-})
-
-const style = computed(() => handleBackground(props.background, true))
+import LabFrame from '../components/LabFrame.vue'
+import ExperimentLoop from '../components/ExperimentLoop.vue'
+defineProps<{ label?: string }>()
 </script>
 
 <template>
-  <div class="slidev-layout cover" :style="style">
-    <div class="my-auto w-full">
-      <slot />
-    </div>
-  </div>
+  <LabFrame kind="cover" :label="label" grid>
+    <div><slot /></div>
+    <ExperimentLoop />
+  </LabFrame>
 </template>
