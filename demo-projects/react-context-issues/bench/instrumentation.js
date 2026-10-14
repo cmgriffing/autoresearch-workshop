@@ -93,9 +93,11 @@ export function instrumentationScript() {
     let fiberRenders = 0;
     let regionRenders = 0;
     let unmarked = 0;
+    const rendered = [];
     walkTree(root.current, (fiber) => {
       if ((fiber.flags & 1) !== 0) {
         fiberRenders += 1;
+        rendered.push(fiber);
         const region = regionOf(fiber);
         if (region) {
           if (!Object.prototype.hasOwnProperty.call(regions, region)) {
@@ -108,6 +110,13 @@ export function instrumentationScript() {
         }
       }
     });
+    // React leaves `PerformedWork` set on committed fibers, so an untouched
+    // fiber would be counted again on the next commit. Clear the bit after
+    // counting: it is DevTools-only metadata and every later commit re-sets it
+    // for the fibers that actually render.
+    for (const fiber of rendered) {
+      fiber.flags &= ~1;
+    }
     state.commits.push({
       index: state.commits.length,
       fiberRenders,
