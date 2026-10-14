@@ -9,7 +9,7 @@
  */
 
 import { chromium } from 'playwright';
-import { CLOCK_START, VIEWPORTS } from './config.js';
+import { CLOCK_START, DATASET, VIEWPORTS } from './config.js';
 import { generateDataset } from './dataset.js';
 import { handleFixtureRequest } from './origins.js';
 import { INSTRUMENTATION_SOURCE } from './instrumentation.js';
@@ -22,10 +22,10 @@ export function launchBrowser() {
   return chromium.launch({ headless: true });
 }
 
-export async function waitFor(page, predicate, { timeoutMs = 15000, intervalMs = 5, label = 'condition' } = {}) {
+export async function waitFor(page, predicate, { timeoutMs = 15000, intervalMs = 5, label = 'condition', arg } = {}) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    if (await page.evaluate(predicate)) return;
+    if (await page.evaluate(predicate, arg)) return;
     await sleep(intervalMs);
   }
   throw new Error(`${label} was not met within ${timeoutMs}ms`);
@@ -69,10 +69,10 @@ export async function runDashboard(browser, { appUrl, seed, withScenario = true 
     });
     await waitFor(
       page,
-      () =>
+      (symbolCount) =>
         Boolean(window.__benchRender && window.__benchRender.injected) &&
-        document.querySelectorAll('[data-bench-part="watch-row"]').length === 30,
-      { label: `dashboard load for seed ${seed}` },
+        document.querySelectorAll('[data-bench-part="watch-row"]').length === symbolCount,
+      { label: `dashboard load for seed ${seed}`, arg: DATASET.symbolCount },
     );
     await waitForSettled(page);
 

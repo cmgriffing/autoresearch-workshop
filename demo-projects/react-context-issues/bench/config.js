@@ -16,9 +16,9 @@ export const SEEDS = [TIMED_SEED, VERIFY_SEED];
 
 /** Shape of the generated dataset (see `dataset.js`). */
 export const DATASET = {
-  symbolCount: 30,
-  positionCount: 15,
-  orderCount: 40,
+  symbolCount: 34,
+  positionCount: 16,
+  orderCount: 26,
   bookLevels: 10,
   newsInitial: 12,
   /** Ticks at which an additional news item arrives. */
@@ -83,7 +83,7 @@ export const CLOCK_START = '2026-03-12T14:30:00.000Z';
  * `render_budget` sit at a similar ratio to the baseline; see `metrics.js`.
  * The default value 1 reports raw counts.
  */
-export const NORMALIZATION = { R: 1, F: 1 };
+export const NORMALIZATION = { R: 2460, F: 28677 };
 
 /** `workload_hash` input. Metric normalization is deliberately not part of it. */
 export const WORKLOAD = {
