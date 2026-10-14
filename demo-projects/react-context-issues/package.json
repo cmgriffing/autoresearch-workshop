@@ -1,0 +1,28 @@
+{
+  "name": "react-context-issues",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Trading dashboard SPA measured in Chromium with external React commit instrumentation",
+  "scripts": {
+    "dev": "node bench/dev.js",
+    "build": "tsc -b && vite build",
+    "bench": "node bench/run.js",
+    "setup": "node bench/setup.js",
+    "test": "node --test test/*.test.js",
+    "verify": "node verify.js"
+  },
+  "dependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "playwright": "1.62.0",
+    "typescript": "6.0.3",
+    "vite": "8.3.2"
+  }
+}
