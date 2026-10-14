@@ -8,11 +8,11 @@
  * components that rendered in that commit.
  *
  * Attribution: a counted fiber is attributed to the nearest `[data-bench-region]`
- * host element on its ancestor chain. A fiber whose first host ancestor sits
- * outside every region (a layout wrapper) is attributed to a region only when
- * its whole subtree renders into exactly one region; components spanning
- * several regions stay unmarked and still count toward fiber totals. Host-only
- * updates (no component rendered) produce no counted fibers.
+ * host element on its ancestor chain. Fibers that render no host element inside
+ * a region (the shell root and layout wrappers around region roots) are
+ * unmarked: they still count toward fiber totals but to no region. This keeps
+ * the must-render oracle strict — a region only counts when a component inside
+ * it actually rendered, not when an outer wrapper re-rendered.
  *
  * The application cannot disable the accounting: the hook is installed by the
  * browser context, outside the page's module graph, and React injects into it
@@ -44,48 +44,17 @@ export function instrumentationScript() {
     }
   }
 
-  /** Strict subtree walk: never visits a sibling of `root` or of its ancestors. */
-  function walkSubtree(root, visit) {
-    let node = root;
-    while (node) {
-      visit(node);
-      if (node.child) {
-        node = node.child;
-        continue;
-      }
-      while (node !== root && !node.sibling) {
-        node = node.return;
-      }
-      if (node === root) return;
-      node = node.sibling;
-    }
-  }
-
   function regionOf(fiber) {
     let node = fiber;
     while (node) {
       const host = node.stateNode;
       if (host && host.nodeType === 1 && typeof host.closest === 'function') {
         const marked = host.closest('[data-bench-region]');
-        if (marked) return marked.getAttribute('data-bench-region');
-        break; // the first host ancestor is outside every region; check the subtree
+        return marked ? marked.getAttribute('data-bench-region') : null;
       }
       node = node.return;
     }
-    let found = null;
-    walkSubtree(fiber, (candidate) => {
-      if (found === '*') return;
-      const host = candidate.stateNode;
-      if (host && host.nodeType === 1 && typeof host.closest === 'function') {
-        const marked = host.closest('[data-bench-region]');
-        if (marked) {
-          const name = marked.getAttribute('data-bench-region');
-          if (found === null) found = name;
-          else if (found !== name) found = '*';
-        }
-      }
-    });
-    return found === '*' ? null : found;
+    return null;
   }
 
   function countCommit(root) {
