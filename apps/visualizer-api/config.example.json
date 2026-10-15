@@ -2,7 +2,7 @@
   "roots": [
     { "path": "../../demo-projects", "recursive": true },
     {
-      "path": "/Volumes/T7/kepler/worktrees/*",
+      "path": "/Users/cmgriffing/kepler/worktrees/*",
       "recursive": true
     }
   ],
